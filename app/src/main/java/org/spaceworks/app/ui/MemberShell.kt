@@ -259,7 +259,8 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                         destination==0 -> MemberHome(member,state.user?.displayName.orEmpty().ifBlank {state.user?.username.orEmpty()},{navigate(1)},bundle.demo,homeExtra,onPayments=payments?.let {{showingPayments=true}},guideProgress=guidance,bookingsEnabled=actionState?.capabilities?.value?.bookableSpaces==true,onProfile={navigate(4)},usage=insights?.let {holder->{org.spaceworks.app.insights.MemberUsagePanel(holder)}})
                         destination==1 -> MemberInventory(member)
                         destination==2 -> MemberActivityScreen(member) {features?.let {org.spaceworks.app.features.ActivityFeatureEntries {featureRoute=it}}}
-                        else -> MemberInboxScreen(member,notifications={bundle.push?.let {push->NotificationsPanel(push,bundle.demo,bundle.pushConfigured,state.memberships.associate {it.id to makerspaceLabel(it.slug)},bundle.pushPreview){hint->bundle.links?.offer(hint)}}},onOpenUpdate={bundle.links?.offer(it)},navigationSequence=inboxNavigationSerial)
+                        else -> MemberInboxScreen(member,notifications={bundle.push?.let {push->NotificationsPanel(push,bundle.demo,bundle.pushConfigured,state.memberships.associate {it.id to makerspaceLabel(it.slug)},bundle.pushPreview){hint->bundle.links?.offer(hint)}}},onOpenUpdate={bundle.links?.offer(it)},navigationSequence=inboxNavigationSerial,
+                            messageActions={message,close->features?.let {org.spaceworks.app.features.InboxSnoozeActions(it.snooze,message) {close();scope.launch {member.refreshInbox()}}}})
                     }
                 }
                 state.error?.let {Box(Modifier.padding(horizontal=24.dp)){BrandError(it)}}

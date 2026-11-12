@@ -262,7 +262,8 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
         }
     }
 }
-@Composable fun MemberInboxScreen(holder:MemberStateHolder,notifications:@Composable ()->Unit={},onOpenUpdate:(String)->Unit={},navigationSequence:Long=0) {
+@Composable fun MemberInboxScreen(holder:MemberStateHolder,notifications:@Composable ()->Unit={},onOpenUpdate:(String)->Unit={},navigationSequence:Long=0,
+    messageActions:@Composable (InboxItem,close:()->Unit)->Unit={_,_->}) {
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
@@ -278,6 +279,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
             Text(if(message.readAt!=null)copyText(UiStrings.MOBILE_READ) else copyText(UiStrings.MOBILE_UNREAD),style=MaterialTheme.typography.labelLarge)
             message.link?.takeIf {it.isNotBlank()}?.let {link->BrandButton(copyText(UiStrings.MOBILE_OPEN_UPDATE),{onOpenUpdate(link)})}
             if(message.readAt==null)BrandButton(copyText(UiStrings.MOBILE_MARK_AS_READ),{scope.launch {if(holder.markRead(message.id))selected=null}},!state.inboxBusy)
+            messageActions(message) {selected=null}
             BrandError(state.inbox.error)
     } else MemberLazyPage(copyText(UiStrings.MOBILE_INBOX),state.inbox,listState,retry={scope.launch {holder.refreshInbox()}},key={it.id},header={
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {

@@ -76,4 +76,9 @@ class DemoProviderLinkGateway:ProviderLinkGateway {
     override suspend fun link(provider:String,idToken:String,nonce:String):String {delay(150);return provider}
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text))
+/** Debug-only snooze: answered locally. */
+class DemoInboxSnoozeGateway:InboxSnoozeGateway {
+    override suspend fun snooze(scope:MemberScope,id:Int,until:java.time.OffsetDateTime):String? {delay(150);return until.toString()}
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text),InboxSnoozeStateHolder(DemoInboxSnoozeGateway(),text))

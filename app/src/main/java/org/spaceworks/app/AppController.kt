@@ -29,6 +29,8 @@ class AppController(application:Application):AndroidViewModel(application) {
     private val fixed=BuildConfig.SERVER_URL
     private val incomingMutable=MutableStateFlow<PendingNativeIntent?>(null)
     val incoming=incomingMutable.asStateFlow()
+    // Payload v3 topic channels exist from first launch so people can mute a topic before its first push.
+    init {runCatching {org.spaceworks.app.features.NotificationChannels.create(application)}}
     private var intentSequence=0L
     /** A URL can express intent; it never configures or changes the selected server. */
     fun receive(intent:Intent) {

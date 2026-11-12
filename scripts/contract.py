@@ -95,6 +95,7 @@ phase3_operations |= {'api_v1_member_makerspaces_calendar_feeds_retrieve','api_v
     'api_v1_member_makerspaces_event_calendar_feed_retrieve','api_v1_member_makerspaces_event_calendar_feed_create','api_v1_member_makerspaces_event_calendar_feed_destroy'}
 phase3_operations |= {'api_v1_auth_social_providers_create'}
 phase3_operations |= {'api_v1_admin_makerspace_reports_catalog_retrieve','api_v1_admin_makerspace_analytics_retrieve'}
+phase3_operations |= {'api_v1_notifications_inbox_snooze_create'}
 # Operations that 0.12.0 added on an already-selected path but the app does not call.
 unused_operations={'api_v1_auth_me_partial_update'}
 base_paths=set(selected)

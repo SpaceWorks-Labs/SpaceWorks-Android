@@ -110,4 +110,16 @@
     <string name="link_continue_google">"Continue with Google"</string>
     <string name="link_linked">"Google is linked. You can now sign in with it."</string>
     <string name="link_unavailable">"Google sign-in isn't available on this device."</string>
+    <string name="snooze_title">"Remind me later"</string>
+    <string name="snooze_one_hour">"In an hour"</string>
+    <string name="snooze_tomorrow">"Tomorrow morning"</string>
+    <string name="snooze_next_week">"Next week"</string>
+    <string name="snooze_done">"Snoozed. It comes back to your inbox later."</string>
+    <string name="channel_loans">"Loans"</string>
+    <string name="channel_bookings">"Bookings"</string>
+    <string name="channel_events">"Events"</string>
+    <string name="channel_machines">"Machines and jobs"</string>
+    <string name="channel_membership">"Membership"</string>
+    <string name="channel_money">"Payments"</string>
+    <string name="channel_space">"Space operations"</string>
 </resources>
