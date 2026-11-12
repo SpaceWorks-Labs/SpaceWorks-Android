@@ -17,6 +17,10 @@ import org.spaceworks.app.auth.*
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle()
+    org.spaceworks.app.telemetry.TrackScreen(when(state.route) {
+        org.spaceworks.app.auth.AccountRoute.SIGN_UP,org.spaceworks.app.auth.AccountRoute.SIGNUP_ACK->org.spaceworks.app.telemetry.TelemetryScreen.SIGN_UP
+        org.spaceworks.app.auth.AccountRoute.VERIFY_EMAIL->org.spaceworks.app.telemetry.TelemetryScreen.EMAIL_VERIFICATION
+        else->org.spaceworks.app.telemetry.TelemetryScreen.PASSWORD_RESET})
     val scope=rememberCoroutineScope()
     val focus=LocalFocusManager.current
     val keyboard=LocalSoftwareKeyboardController.current

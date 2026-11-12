@@ -1,5 +1,7 @@
 package org.spaceworks.app.account
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -168,7 +170,7 @@ class AccountDeletionStateHolder(private val api:AccountDeletionGateway,private 
         }
         mutable.update {it.copy(stage=stage,preview=preview,phoneCodeSent=false,factorKind=null,proofExpiresAt=if(stage==DeletionStage.CONFIRM)it.proofExpiresAt else null)}
     }
-    suspend fun load()=operation {reload(it)}
+    suspend fun load()=operation {AppTelemetry.track(TelemetryEvent.accountDeletionStarted);reload(it)}
     private suspend fun accept(owner:Long,proof:DeletionProof) {
         if(owner!=generation)return
         when(proof) {
@@ -230,6 +232,7 @@ class AccountDeletionStateHolder(private val api:AccountDeletionGateway,private 
             is DeletionOutcome.Deleted -> {
                 if(owner!=generation)return@operation
                 mutable.update {it.copy(stage=DeletionStage.FINISHED,deleted=outcome,proofExpiresAt=null)}
+                AppTelemetry.track(TelemetryEvent.accountDeletionCompleted)
                 onDeleted(outcome)
             }
         }

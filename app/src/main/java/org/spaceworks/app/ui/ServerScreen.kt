@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.spaceworks.app.*
 
 @Composable fun ServerScreen(holder:ConnectionStateHolder,state:ConnectionState,onDemo:(()->Unit)?=null) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.SERVER_CONNECT)
     val copyText=rememberMobileText()
 
     val scope=rememberCoroutineScope()

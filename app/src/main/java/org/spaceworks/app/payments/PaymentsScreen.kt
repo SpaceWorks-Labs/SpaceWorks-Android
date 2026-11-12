@@ -28,6 +28,7 @@ import org.spaceworks.app.ui.*
     nativeState:NativePaymentState=NativePaymentState.Idle,
     launchCheckout:(NativeSheetInput)->PaymentLaunchResult={PaymentLaunchResult.HOST_NOT_READY},
     acknowledgeNative:()->Unit={},recoverInterrupted:()->Unit={},refreshOnEnter:Boolean=true,hostAvailable:Boolean=true) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.PAYMENTS)
     val text=rememberMobileText()
     val s by holder.state.collectAsStateWithLifecycle();val work=rememberCoroutineScope();val context=LocalContext.current
     val latestNativeState by rememberUpdatedState(nativeState)

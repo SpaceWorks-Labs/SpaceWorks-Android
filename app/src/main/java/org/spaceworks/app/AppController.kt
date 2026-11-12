@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import org.spaceworks.app.account.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import org.spaceworks.app.auth.*
 import org.spaceworks.app.network.*
 import org.spaceworks.app.notifications.*
@@ -45,10 +47,12 @@ class AppController(application:Application):AndroidViewModel(application) {
         health={ApiSession(it).checkHealth()},save={prefs.edit().putString("server",it).apply()},text=copyText)
     private var demo:AuthBundle?=null
     fun demoSession():AuthBundle?=(demo ?: run {
+        // Demo data never reaches a telemetry provider.
+        org.spaceworks.app.telemetry.AppTelemetry.demoActive=true
         sessions.values.forEach {it.push?.pause()}
         DemoSupport.create(text=copyText,context=getApplication<Application>(),paymentFiles=org.spaceworks.app.payments.CachedPaymentFiles(java.io.File(getApplication<Application>().cacheDir,"native-documents")),management=management)?.also {demo=it}
     })?.also {management.show(it)}
-    fun clearDemo(){demo?.clearDemoState();demo=null}
+    fun clearDemo(){demo?.clearDemoState();demo=null;org.spaceworks.app.telemetry.AppTelemetry.demoActive=false}
     fun realSession(origin:String):AuthBundle {
         val key=getApplication<Application>().noBackupFilesDir.absolutePath+"\n"+origin
         return sessions.computeIfAbsent(key){createReal(origin)}.also {management.show(it)}
@@ -148,6 +152,13 @@ class AppController(application:Application):AndroidViewModel(application) {
             },insights=insights)
         management.register(bundle,requireNotNull(runtime)) {owner->GeneratedAccountGateway(session,owner.hasSession,owner.selected,application.resources::accountText)}
         viewModelScope.launch {store.installationEpoch.collect {holder.invalidateInstallation(it)}}
+        // Pseudonymous telemetry identity follows the signed-in user and staff authority; cleared on sign-out.
+        viewModelScope.launch {
+            holder.state.map {it.user?.id?.toString() to (it.staffAllowed && it.selected?.actions?.isNotEmpty()==true)}.distinctUntilChanged().collect {(user,staffRole)->
+                if(user==null)org.spaceworks.app.telemetry.AppTelemetry.reset()
+                else org.spaceworks.app.telemetry.AppTelemetry.identify(org.spaceworks.app.telemetry.TelemetryUser.of(session.server.toString(),user,staffRole))
+            }
+        }
         return bundle
     }
 }

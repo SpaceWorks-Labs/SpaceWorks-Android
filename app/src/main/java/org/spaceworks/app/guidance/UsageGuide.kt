@@ -76,6 +76,7 @@ import org.spaceworks.app.platform.rememberMobileText
     onResetTips: (() -> Unit)? = null,
     footer: @Composable () -> Unit = {},
 ) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.APP_GUIDE)
     val copy = rememberMobileText()
     var resetNotice by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.background) {

@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import org.spaceworks.app.auth.*
 
 @Composable fun PreviewAuthScreen(controller:PreviewAuthController) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.SIGN_IN)
     val copyText=rememberMobileText()
 
     val state by controller.state.collectAsStateWithLifecycle()

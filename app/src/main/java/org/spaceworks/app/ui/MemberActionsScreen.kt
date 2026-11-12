@@ -46,6 +46,11 @@ val LocalMemberActionScope=staticCompositionLocalOf<kotlinx.coroutines.Coroutine
     val copyText=rememberMobileText()
 
     val s by holder.state.collectAsStateWithLifecycle();val work=rememberCoroutineScope()
+    org.spaceworks.app.telemetry.TrackScreen(when(s.route) {
+        org.spaceworks.app.actions.ActionRoute.SPACE->org.spaceworks.app.telemetry.TelemetryScreen.SPACE_DETAIL;org.spaceworks.app.actions.ActionRoute.BOOKING->org.spaceworks.app.telemetry.TelemetryScreen.BOOKING_DETAIL
+        org.spaceworks.app.actions.ActionRoute.EVENT,org.spaceworks.app.actions.ActionRoute.REGISTRATION->org.spaceworks.app.telemetry.TelemetryScreen.EVENT_DETAIL
+        org.spaceworks.app.actions.ActionRoute.PROFILE->org.spaceworks.app.telemetry.TelemetryScreen.PROFILE_EDIT;org.spaceworks.app.actions.ActionRoute.PREFERENCES->org.spaceworks.app.telemetry.TelemetryScreen.COMMUNICATION_PREFERENCES
+        else->org.spaceworks.app.telemetry.TelemetryScreen.ACTIVITY})
     val feedback=rememberActionFeedback(holder to s.scope)
     val focus=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
     val scroll=rememberScrollState()
@@ -122,7 +127,7 @@ val LocalMemberActionScope=staticCompositionLocalOf<kotlinx.coroutines.Coroutine
                 }
                 ActionRoute.REGISTRATION->s.registration?.let {registration->
                     Text(registration.title,style=MaterialTheme.typography.titleLarge);Text(memberStatus(registration.status,copyText));Text(memberDate(registration.startsAt));registration.waitlistPosition?.let {Text(copyText(UiStrings.MOBILE_WAITLIST_POSITION_VALUE,it))}
-                    if(registration.status=="registered"){BrandButton(copyText(UiStrings.MOBILE_SHOW_QR_TICKET),{work.launch {holder.ticketQR()}},enabled);s.qr?.let {bytes->val bitmap=remember(bytes){runCatching {org.spaceworks.app.actions.SafeTicketSvg.render(bytes)}.getOrNull()};if(bitmap==null)BrandError(copyText(UiStrings.MOBILE_THIS_TICKET_COULDN_T_BE_DISPLAYED_REFRESH_OR_ASK_THE_EVENT_TEAM))else Image(bitmap.asImageBitmap(),copyText(UiStrings.MOBILE_YOUR_EVENT_REGISTRATION_QR_TICKET),Modifier.fillMaxWidth().heightIn(max=360.dp))}}else Text(copyText(UiStrings.MOBILE_A_QR_TICKET_IS_AVAILABLE_ONLY_AFTER_REGISTRATION_IS_CONFIRMED))
+                    if(registration.status=="registered"){BrandButton(copyText(UiStrings.MOBILE_SHOW_QR_TICKET),{work.launch {holder.ticketQR()}},enabled);s.qr?.let {bytes->val bitmap=remember(bytes){runCatching {org.spaceworks.app.actions.SafeTicketSvg.render(bytes)}.getOrNull()};if(bitmap==null)BrandError(copyText(UiStrings.MOBILE_THIS_TICKET_COULDN_T_BE_DISPLAYED_REFRESH_OR_ASK_THE_EVENT_TEAM))else AuroraCard(copyText(DesignStrings.DESIGN_EVENT_TICKET)){org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.EVENT_TICKET);AuroraQuietZone {Image(bitmap.asImageBitmap(),copyText(UiStrings.MOBILE_YOUR_EVENT_REGISTRATION_QR_TICKET),Modifier.fillMaxWidth().heightIn(max=360.dp))}}}}else Text(copyText(UiStrings.MOBILE_A_QR_TICKET_IS_AVAILABLE_ONLY_AFTER_REGISTRATION_IS_CONFIRMED))
                     registration.cancellationCutoffAt?.let {Text(copyText(UiStrings.MOBILE_CANCELLATION_CLOSES_VALUE,memberDate(it)))}
                     if(registration.canCancel)BrandTextButton(copyText(UiStrings.MOBILE_CANCEL_REGISTRATION),{review("cancelRegistration")},enabled)
                 }

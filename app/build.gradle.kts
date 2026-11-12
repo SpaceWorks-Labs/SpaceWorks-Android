@@ -32,6 +32,32 @@ android {
             ?: (brand["play_integrity_cloud_project_number"] as? Number)?.toLong() ?: 0L
         require(integrityProject >= 0) { "play_integrity_cloud_project_number must be a positive project number or null" }
         buildConfigField("long", "PLAY_INTEGRITY_PROJECT", "${integrityProject}L")
+        // Telemetry (docs/TELEMETRY.md): public values only. Gradle property > environment > brand.json `telemetry`.
+        val telemetry = (brand["telemetry"] as? Map<*, *>).orEmpty()
+        fun telemetryValue(property: String, env: String, key: String): String? =
+            ((findProperty("spaceworks.$property") as String?) ?: providers.environmentVariable(env).orNull ?: telemetry[key]?.toString())
+                ?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
+        val sentryDsn = telemetryValue("sentryDsn", "SPACEWORKS_SENTRY_DSN", "sentry_dsn")
+        val sentryEnvironment = telemetryValue("sentryEnvironment", "SPACEWORKS_SENTRY_ENVIRONMENT", "sentry_environment")
+        val sentryRate = telemetryValue("sentryTracesSampleRate", "SPACEWORKS_SENTRY_TRACES_SAMPLE_RATE", "sentry_traces_sample_rate")?.toDouble() ?: 0.1
+        val posthogKey = telemetryValue("posthogApiKey", "SPACEWORKS_POSTHOG_API_KEY", "posthog_api_key")
+        val posthogHost = telemetryValue("posthogHost", "SPACEWORKS_POSTHOG_HOST", "posthog_host") ?: "https://eu.i.posthog.com"
+        val clarityId = telemetryValue("clarityProjectId", "SPACEWORKS_CLARITY_PROJECT_ID", "clarity_project_id")
+        val telemetryDebug = telemetryValue("telemetryDebug", "SPACEWORKS_TELEMETRY_DEBUG", "telemetry_debug") in setOf("1", "true")
+        require(sentryDsn == null || sentryDsn.startsWith("https://")) { "Sentry DSN must be an https:// URL" }
+        require(posthogHost.startsWith("https://")) { "PostHog host must be an https:// URL" }
+        require(sentryRate in 0.0..1.0) { "Sentry traces sample rate must be between 0 and 1" }
+        listOf(sentryDsn, sentryEnvironment, posthogKey, posthogHost, clarityId).filterNotNull().forEach {
+            require(Regex("[A-Za-z0-9:/@._+-]+").matches(it)) { "Telemetry configuration contains an unsupported character" }
+        }
+        buildConfigField("String", "TELEMETRY_SENTRY_DSN", "\"${sentryDsn.orEmpty()}\"")
+        buildConfigField("String", "TELEMETRY_SENTRY_ENVIRONMENT", "\"${sentryEnvironment.orEmpty()}\"")
+        buildConfigField("double", "TELEMETRY_SENTRY_TRACES_SAMPLE_RATE", sentryRate.toString())
+        buildConfigField("String", "TELEMETRY_POSTHOG_API_KEY", "\"${posthogKey.orEmpty()}\"")
+        buildConfigField("String", "TELEMETRY_POSTHOG_HOST", "\"$posthogHost\"")
+        buildConfigField("String", "TELEMETRY_CLARITY_PROJECT_ID", "\"${clarityId.orEmpty()}\"")
+        buildConfigField("boolean", "TELEMETRY_FIREBASE_CONFIGURED", file("google-services.json").isFile.toString())
+        buildConfigField("boolean", "TELEMETRY_DEBUG", telemetryDebug.toString())
     }
     // The owner's upload key is injected only in the private release environment; never committed.
     val uploadKeystore = providers.environmentVariable("SPACEWORKS_UPLOAD_KEYSTORE").orNull
@@ -178,6 +204,11 @@ dependencies {
     implementation("com.google.android.play:integrity:1.6.0")
     implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
     implementation("com.google.firebase:firebase-messaging")
+    // Telemetry (docs/TELEMETRY.md, docs/DEPENDENCIES.md): consent-gated, no ad ids, no Crashlytics.
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.posthog:posthog-android:3.76.2")
+    implementation("com.microsoft.clarity:clarity-compose:3.10.0")
+    implementation("io.sentry:sentry-android:8.64.0")
     implementation("androidx.camera:camera-core:1.5.3")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("androidx.camera:camera-camera2:1.5.3")

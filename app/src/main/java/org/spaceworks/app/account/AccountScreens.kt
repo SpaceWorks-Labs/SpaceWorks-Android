@@ -49,6 +49,7 @@ private data class AccountConfirmation(val title: String, val detail: String, va
 
 @Composable fun AccountScreens(holder: AccountManagementStateHolder, demo: Boolean, onBack: () -> Unit,
     privacyURL: String? = null, supportURL: String? = null, now: () -> Long = System::currentTimeMillis, onDelete:(()->Unit)?=null) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.ACCOUNT_SECURITY)
     val s by holder.state.collectAsStateWithLifecycle()
     val work = rememberCoroutineScope()
     val focus = LocalFocusManager.current

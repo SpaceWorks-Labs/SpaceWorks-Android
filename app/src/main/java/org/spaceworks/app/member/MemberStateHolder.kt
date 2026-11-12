@@ -1,5 +1,7 @@
 package org.spaceworks.app.member
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.network.retryDeadlineMillis
 
 import org.spaceworks.app.platform.MobileText
@@ -110,6 +112,7 @@ class MemberStateHolder(private val api:MemberGateway,private val now:()->Long=S
     suspend fun search(query:String,category:String?=state.value.category) {
         mutable.update {it.copy(query=query,category=category,inventory=MemberLoad(),productId=null,product=MemberLoad())}
         refreshInventory()
+        if(state.value.inventory.value!=null)AppTelemetry.track(TelemetryEvent.inventorySearched(query.isNotBlank()))
     }
     suspend fun refreshInventory() {
         val version=inventoryVersion.incrementAndGet();val query=state.value.query;val category=state.value.category

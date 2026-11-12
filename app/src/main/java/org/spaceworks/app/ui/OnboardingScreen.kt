@@ -32,13 +32,15 @@ private val introPages=listOf(
     IntroPage(UiStrings.MOBILE_ONE_PLACE_FOR_YOUR_MAKING,UiStrings.MOBILE_KEEP_BOOKINGS_EVENT_TICKETS_PAYMENTS_AND_UPDATES_TOGETHER,UiStrings.MOBILE_CONNECT_YOUR_MAKERSPACE)
 )
 @Composable fun OnboardingScreen(onFinish:()->Unit,onDemo:(()->Unit)?=null) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.INTRO)
     val copyText=rememberMobileText()
 
     var step by rememberSaveable {mutableIntStateOf(0)}
     val reduced=LocalReducedMotion.current
     val feedback=rememberActionFeedback(Unit)
     val slideOffset=with(LocalDensity.current){12.dp.roundToPx()}
-    val easing=CubicBezierEasing(BrandMotion.easing[0],BrandMotion.easing[1],BrandMotion.easing[2],BrandMotion.easing[3])
+    fun bezier(points:FloatArray)=CubicBezierEasing(points[0],points[1],points[2],points[3])
+    val easing=bezier(BrandMotion.overlayEnterEasing);val exitEasing=bezier(BrandMotion.overlayExitEasing)
     Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
         Column(Modifier.widthIn(max=620.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(24.dp)) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
@@ -50,11 +52,13 @@ private val introPages=listOf(
             Text(stepDescription,style=MaterialTheme.typography.labelLarge,modifier=Modifier.semantics {stateDescription=stepDescription})
             AnimatedContent(targetState=step,label=copyText(UiStrings.MOBILE_INTRODUCTION_PANEL),transitionSpec={
                 if(reduced)EnterTransition.None togetherWith ExitTransition.None
-                else (fadeIn(tween(BrandMotion.EXPAND,easing=easing))+slideInVertically(tween(BrandMotion.EXPAND,easing=easing)){slideOffset}) togetherWith fadeOut(tween(BrandMotion.OVERLAY_EXIT,easing=easing))
+                else (fadeIn(tween(BrandMotion.EXPAND,easing=easing))+slideInVertically(tween(BrandMotion.EXPAND,easing=easing)){slideOffset}) togetherWith fadeOut(tween(BrandMotion.OVERLAY_EXIT,easing=exitEasing))
             }) {index ->
                 val page=introPages[index]
                 Column(verticalArrangement=Arrangement.spacedBy(24.dp)) {
-                    Text(copyText(page.title),style=MaterialTheme.typography.headlineLarge,fontFamily=BrandAccentFont,modifier=Modifier.semantics {heading();liveRegion=LiveRegionMode.Polite})
+                    // Patch is this layout's one bold moment, so the intro titles use the display face, not Unbounded.
+                    if(index==0)Patch(160.dp,Modifier.align(Alignment.CenterHorizontally),animated=true)
+                    Text(copyText(page.title),style=MaterialTheme.typography.headlineLarge,modifier=Modifier.semantics {heading();liveRegion=LiveRegionMode.Polite})
                     Text(copyText(page.body),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {

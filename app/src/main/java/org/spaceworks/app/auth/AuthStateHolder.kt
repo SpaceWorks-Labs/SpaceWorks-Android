@@ -1,5 +1,8 @@
 package org.spaceworks.app.auth
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.SignInMethod
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.platform.MobileText
 import org.spaceworks.app.platform.MobileCopyException
 import org.spaceworks.app.platform.failure
@@ -102,6 +105,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     }
     suspend fun signIn(username:String,password:String)=signInWithOutcome(username,password,null)
     suspend fun signInWithOutcome(username:String,password:String,onOutcome:((AuthOperationOutcome)->Unit)?)=runOperation(onOutcome=onOutcome) {
+        startSignIn(SignInMethod.PASSWORD)
         mutable.value=state.value.copy(gate=null)
         ensure(username.trim().isNotBlank() && password.isNotEmpty(),text(CoreStrings.CORE_ENTER_YOUR_EMAIL_OR_USERNAME_AND_PASSWORD))
         ensure(state.value.config!=null && state.value.passwordEnabled,text(CoreStrings.CORE_PASSWORD_SIGN_IN_IS_UNAVAILABLE_ON_THIS_SERVER))
@@ -120,6 +124,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     }
     suspend fun googleSignIn(credential:suspend(String,String)->String)=googleSignInWithOutcome(credential,null)
     suspend fun googleSignInWithOutcome(credential:suspend(String,String)->String,onOutcome:((AuthOperationOutcome)->Unit)?)=runOperation(onOutcome=onOutcome) {
+        startSignIn(SignInMethod.GOOGLE)
         mutable.value=state.value.copy(gate=null)
         val client=state.value.googleClientId ?: throw AuthMessage(text(CoreStrings.CORE_GOOGLE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_SERVER))
         ensure(api.nativeSocialReady,text(CoreStrings.CORE_DEVICE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_BUILD_CONTACT_YOUR))
@@ -133,6 +138,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     fun changePhoneNumber() {if(!state.value.busy){phoneChallenge=null;mutable.value=state.value.copy(phone=PhoneSignIn(state.value.phone?.phone.orEmpty()),error=null)}}
     fun closePhone() {if(!state.value.busy){phoneChallenge=null;mutable.value=state.value.copy(phone=null,error=null)}}
     suspend fun sendPhoneCode(phone:String,onOutcome:((AuthOperationOutcome)->Unit)?=null)=runOperation(onOutcome=onOutcome) {
+        startSignIn(SignInMethod.PHONE)
         val number=phone.filter {it.isDigit() || it=='+'}
         ensure(Regex("\\+[1-9]\\d{6,14}").matches(number),text(CoreStrings.CORE_ENTER_YOUR_PHONE_NUMBER_WITH_ITS_COUNTRY_CODE))
         ensure(state.value.phoneEnabled,text(CoreStrings.CORE_PHONE_SIGN_IN_IS_UNAVAILABLE_ON_THIS_SERVER))
@@ -175,6 +181,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     }
     val oidcProviders get()=state.value.native?.providers?.oidc.orEmpty().filter {it.key.startsWith("oidc:") && it.clientId.isNotBlank() && it.issuer.startsWith("https://")}
     suspend fun oidcSignIn(provider:NativeOidc,credential:suspend(NativeOidc,String)->String,onOutcome:((AuthOperationOutcome)->Unit)?=null)=runOperation(onOutcome=onOutcome) {
+        startSignIn(SignInMethod.OIDC)
         mutable.value=state.value.copy(gate=null)
         ensure(oidcProviders.any {it.key==provider.key},text(CoreStrings.CORE_THIS_SIGN_IN_PROVIDER_IS_UNAVAILABLE_TRY_AGAIN))
         ensure(api.nativeSocialReady,text(CoreStrings.CORE_DEVICE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_BUILD_CONTACT_YOUR))
@@ -247,7 +254,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         if(state.value.memberships.none {it.id==id}) {
             mutable.value=state.value.copy(error=text(CoreStrings.CORE_YOUR_MAKERSPACE_ACCESS_CHANGED_CHOOSE_AGAIN));return
         }
-        if(state.value.selectedId!=id)onScopeChanged()
+        if(state.value.selectedId!=id){onScopeChanged();AppTelemetry.track(TelemetryEvent.makerspaceSwitched)}
         saveSelection(id);mutable.value=state.value.copy(selectedId=id)
     }
     fun dismissGate() {if(!state.value.busy && state.value.gate!=AuthGate.UPDATE_REQUIRED)mutable.value=state.value.copy(gate=null,error=null)}
@@ -255,6 +262,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     suspend fun signOutEverywhere()=runOperation(ignoreThrottle=true) {
         val expected=acceptedInstallationEpoch?:throw AuthMessage(text(CoreStrings.CORE_PLEASE_SIGN_IN_AGAIN))
         api.logoutAll(expected)
+        AppTelemetry.track(TelemetryEvent.signOut(everywhere=true))
         acceptedIdentityEpoch=null
         onSessionEnded()
         if(tokens.snapshot().epoch==expected)saveSelection(null)
@@ -262,6 +270,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         clearInstalled(expected)
     }
     suspend fun signOut()=runOperation(ignoreThrottle=true) {
+        if(state.value.user!=null)AppTelemetry.track(TelemetryEvent.signOut(everywhere=false))
         val expected=installedEpoch
         val installed=tokens.snapshot()
         if(expected==null || installed.epoch!=expected || installed.pair==null) {
@@ -461,6 +470,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         val revision=localIdentityRevision
         val before=state.value
         var completion:AuthOperationOutcome?=null
+        var failure:String?=null
         fun capture(kind:AuthOperationKind?) {
             val epoch=operationEpoch ?: return
             if(onOutcome!=null && kind!=null && localIdentityRevision==revision && tokens.snapshot().epoch==epoch)
@@ -477,6 +487,8 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         } catch(cancelled:CancellationException) {throw cancelled}
         catch(_:AuthCancelled) {if(localIdentityRevision!=revision)return;mutable.value=state.value.copy(error=null,notice=text(CoreStrings.CORE_SIGN_IN_CANCELLED))}
         catch(f:Exception) {
+            // Server code, else HTTP status class, else network; local validation is not a sign-in failure.
+            failure=if(f is ApiFailure)f.code?:"${f.status/100}xx" else if(f is AuthMessage || f is MobileCopyException)null else "network"
             if(localIdentityRevision!=revision)return
             if(f is ApiFailure && f.status==429) retryAt=maxOf(retryAt,retryDeadlineMillis(now(),f.retryAfterSeconds?:60))
             mutable.value=state.value.copy(retryAtMillis=retryAt,
@@ -485,5 +497,18 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
             capture(AuthOperationKind.REJECTED)
         } finally {operationRevision=null;operationEpoch=null;mutable.value=state.value.copy(busy=endingLocalSession);operation.unlock()}
         completion?.takeIf(::isCurrentOutcome)?.let {onOutcome?.invoke(it)}
+        reportSignIn(before,failure)
+    }
+    // Telemetry: started on the attempt, succeeded/failed/MFA only once the server answered.
+    private var signInMethod:SignInMethod?=null
+    private fun startSignIn(method:SignInMethod){signInMethod=method;AppTelemetry.track(TelemetryEvent.signInStarted(method))}
+    private fun reportSignIn(before:AuthState,failure:String?) {
+        val method=signInMethod?:return
+        val after=state.value
+        when {
+            after.user!=null && before.user==null -> {signInMethod=null;AppTelemetry.track(TelemetryEvent.signInSucceeded(method))}
+            failure!=null -> AppTelemetry.track(TelemetryEvent.signInFailed(method,failure))
+            after.mfa!=null && before.mfa==null -> AppTelemetry.track(TelemetryEvent.mfaChallengeShown(if(after.mfa?.enrollmentRequired==true)"enrollment" else "verification"))
+        }
     }
 }

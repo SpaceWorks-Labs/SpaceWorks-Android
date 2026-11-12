@@ -49,6 +49,21 @@ private class FakeAuth:AuthGateway {
     override suspend fun changePassword(current:String,replacement:String){changed=true}
 }
 class AuthTest {
+    @Test fun signInTelemetryReportsMfaThenServerConfirmedSuccessAndSignOut()=runTest {
+        val recording=org.spaceworks.app.telemetry.RecordingTelemetry.install()
+        try {
+            val api=FakeAuth();val holder=AuthStateHolder(api,MemoryTokenStore())
+            holder.initialize();holder.signIn("member","pass")
+            assertEquals(listOf("sign_in_started","mfa_challenge_shown"),recording.names)
+            holder.verify("123456")
+            assertEquals("sign_in_succeeded",recording.names.last());assertEquals("password",recording.events.last().properties["method"])
+            holder.signOut()
+            assertEquals(mapOf("scope" to "device"),recording.events.last().properties)
+            api.throttle=true;holder.signIn("member","pass")
+            assertEquals(mapOf("method" to "password","code" to "4xx"),recording.events.last().properties)
+            assertTrue(recording.events.none {event->event.properties.values.any {it=="member" || it=="pass"}})
+        } finally {org.spaceworks.app.telemetry.RecordingTelemetry.uninstall()}
+    }
     @Test fun delayedVerificationCannotEmitFeedbackForReplacementInstallation()=runTest {
         val api=FakeAuth();val store=MemoryTokenStore();val holder=AuthStateHolder(api,store)
         holder.initialize();holder.signIn("member","pass")

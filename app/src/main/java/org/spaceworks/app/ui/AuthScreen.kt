@@ -29,6 +29,8 @@ import org.spaceworks.app.platform.GoogleIdentity
 
     val holder=bundle.holder
     val state by holder.state.collectAsStateWithLifecycle()
+    org.spaceworks.app.telemetry.TrackScreen(when {state.recoveryCodes.isNotEmpty()->org.spaceworks.app.telemetry.TelemetryScreen.RECOVERY_CODES
+        state.mfa!=null->org.spaceworks.app.telemetry.TelemetryScreen.MFA;state.phone!=null->org.spaceworks.app.telemetry.TelemetryScreen.PHONE_SIGN_IN;else->org.spaceworks.app.telemetry.TelemetryScreen.SIGN_IN})
     val account=bundle.accounts?.state?.collectAsStateWithLifecycle()?.value
     val scope=rememberCoroutineScope()
     val feedback=rememberActionFeedback(bundle)

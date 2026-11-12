@@ -111,6 +111,8 @@ class MainActivity:ComponentActivity() {
                     bundle!=null -> SessionContent(bundle,if(!holder.locked && !demo){{holder.changeServer()}} else null,onboarding?.let {{it.replay()}},incoming,onIncomingConsumed,onDemoDeleted={bundle.clearDemoState();demo=false;onExitDemo()})
                     else -> Text(copyText(UiStrings.MOBILE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_BUILD),Modifier.padding(24.dp))
                 }
+                // First-run consent: after the introduction, never blocking server entry or sign-in.
+                if(introComplete)org.spaceworks.app.telemetry.TelemetrySetup.controller?.let {org.spaceworks.app.telemetry.TelemetryConsentSheet(it)}
             }
         }
     }

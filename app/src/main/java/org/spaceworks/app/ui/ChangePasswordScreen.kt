@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.spaceworks.app.auth.AuthBundle
 
 @Composable fun ChangePasswordScreen(bundle:AuthBundle) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.PASSWORD_CHANGE)
     val copyText=rememberMobileText()
 
     val state by bundle.holder.state.collectAsStateWithLifecycle()

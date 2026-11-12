@@ -94,6 +94,10 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     var showingPayments by remember(state.selectedId){mutableStateOf(false)}
     val insights=bundle.insights
     var showingMessaging by remember(state.selectedId){mutableStateOf(false)}
+    // Privacy and analytics: shown only when at least one telemetry provider is configured.
+    val telemetry=org.spaceworks.app.telemetry.TelemetrySetup.controller?.takeIf {it.configuredPurposes.isNotEmpty()}
+    var showingPrivacy by remember {mutableStateOf(false)}
+    BackHandler(showingPrivacy){showingPrivacy=false}
     BackHandler(showingMessaging){showingMessaging=false}
     LaunchedEffect(insights,state.selectedId) {state.selected?.let {insights?.activate(MemberScope(it.id,it.slug))}}
     var paymentRoute by remember(state.selectedId){mutableStateOf<Pair<Long,String?>?>(null)}
@@ -180,6 +184,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                 }}
                 if(clock<(content?.retryAtMillis?:0))Text(copyText(UiStrings.MOBILE_TRY_AGAIN_IN_VALUES,retrySecondsRemaining(clock,requireNotNull(content).retryAtMillis)),Modifier.padding(16.dp),color=MaterialTheme.colorScheme.onPrimaryContainer)
                 Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if(destination==4 && !showingPrivacy && !showingGuide && !showingStaff && !showingPayments && !showingMessaging && actionState?.route==null)org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.PROFILE)
                     when {
                         showingGuide -> UsageGuideScreen(bundle.demo,staffAvailable,{showingGuide=false},
                             {showingGuide=false;onShowIntro?.invoke()},guidance?.let {{it.resetTips()}},footer={
@@ -205,6 +210,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                             },acknowledgeNative={nativeCheckout?.acknowledge?.invoke()},recoverInterrupted={nativeCheckout?.recoverInterrupted?.invoke()},refreshOnEnter=paymentRoute==null,hostAvailable=!state.busy)
                         actionState?.route!=null && actionState.scope?.id!=state.selectedId -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
                         actionState?.route!=null && actions!=null -> MemberActionsScreen(actions,bundle.demo,{})
+                        showingPrivacy && telemetry!=null -> org.spaceworks.app.telemetry.PrivacyAnalyticsScreen(telemetry){showingPrivacy=false}
                         destination==4 -> Box(Modifier.fillMaxSize(),contentAlignment=androidx.compose.ui.Alignment.TopCenter) {
                             Column(Modifier.widthIn(max=640.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
                                 Text(copyText(UiStrings.MOBILE_PROFILE),style=MaterialTheme.typography.headlineLarge)
@@ -229,6 +235,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 if(state.user?.emailVerified==false && state.config?.emailEnabled==true)bundle.accounts?.let {BrandTextButton(copyText(UiStrings.MOBILE_CONFIRM_YOUR_EMAIL),{it.open(AccountRoute.VERIFY_EMAIL,state.user?.email.orEmpty())})}
                                 BrandTextButton(copyText(UsageStrings.USAGE_APP_GUIDE),{showingGuide=true},!state.busy,modifier=Modifier.semantics {testTag="usage-guide-entry"})
                                 onShowIntro?.let {BrandTextButton(copyText(UiStrings.MOBILE_SHOW_INTRODUCTION),it,!state.busy)}
+                                if(telemetry!=null)BrandTextButton(copyText(org.spaceworks.app.telemetry.TelemetryStrings.TELEMETRY_PRIVACY_TITLE),{showingPrivacy=true},modifier=Modifier.semantics {testTag="privacy-analytics-entry"})
                                 BrandButton(copyText(UiStrings.MOBILE_SIGN_OUT),{signingOut=true},!state.busy)
                                 if(!bundle.demo)BrandTextButton(copyText(UiStrings.MOBILE_SIGN_OUT_EVERYWHERE),{signingOutEverywhere=true},!state.busy,modifier=Modifier.semantics {testTag="sign-out-everywhere"})
                                 onChangeServer?.let {BrandTextButton(copyText(UiStrings.MOBILE_CHANGE_SERVER),{changingServer=true},!state.busy)}

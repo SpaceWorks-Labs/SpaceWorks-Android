@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Owned copy: TelemetryConsentUi.kt (first-run consent sheet and Profile privacy screen); same copy as iOS -->
+    <string name="telemetry_help_improve_title">"Help improve %1$s"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_help_improve_body">"Choose what this app may share to help fix problems and improve features. Everything is off until you turn it on. Your name, email and what you type are never sent."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_change_later">"You can change this any time in Profile → Privacy and analytics."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_usage_analytics">"Usage analytics"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_usage_analytics_help">"Which screens and features are used, never your name or what you type."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_session_replay">"Session replay"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_session_replay_help">"Masked recordings of how screens are used. Text, inputs and images are hidden; sign-in, payment and code screens are never recorded."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_crash_reports">"Crash and performance reports"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_crash_reports_help">"Crash, freeze and speed reports, with addresses and IDs removed."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_allow_all">"Allow all"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_save_choices">"Save choices"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_not_now">"Not now"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt, MemberShell.kt (Profile entry) -->
+    <string name="telemetry_privacy_title">"Privacy and analytics"</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_withdraw_note">"Withdrawing stops collection now. It cannot delete what a provider already holds."</string>
+    <!-- Owned copy: TelemetryConsentUi.kt -->
+    <string name="telemetry_back">"Back"</string>
+</resources>
