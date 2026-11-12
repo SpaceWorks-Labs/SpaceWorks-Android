@@ -26,4 +26,22 @@
     <string name="waiver_accepting">"Accepting…"</string>
     <string name="waiver_accepted">"You accepted version %1$s."</string>
     <string name="waiver_changed">"The waiver changed while you were reading. Review the current version below."</string>
+    <string name="eligibility_membership_required">"This needs an active membership of this space. Join or renew from your member area, or ask space staff if you think your membership should be active."</string>
+    <string name="eligibility_membership_inactive">"Your membership of this space is not active. Ask space staff to review it."</string>
+    <string name="eligibility_membership_lapsed">"Your membership term has ended. Renew your membership from your member area, then try again."</string>
+    <string name="eligibility_waiver_required">"Accept the space's current waiver in your member area, then try again."</string>
+    <string name="eligibility_presence_required">"Check in at the space first (in your member area or at the front desk), then try again."</string>
+    <string name="eligibility_restricted">"Your account is restricted at this space. Talk to space staff to resolve it."</string>
+    <string name="eligibility_no_machine_access">"A space manager has not given you access to this machine yet. Ask space staff to give you access, then try again."</string>
+    <string name="eligibility_machine_access_expired">"Your access to this machine has ended. Ask space staff to renew it, then try again."</string>
+    <string name="eligibility_event_only_product">"This item is lent only through an event. Ask the event organizers to request it for you."</string>
+    <string name="eligibility_self_renewal_off">"You can't renew loans yourself here. Ask space staff to renew it."</string>
+    <string name="eligibility_renewal_limit">"This loan has reached its renewal limit. Return it, or ask space staff."</string>
+    <string name="eligibility_renewals_off">"Loan renewals are switched off in this space. Ask space staff."</string>
+    <string name="eligibility_machine_intake_unavailable">"Online machine requests aren't available here. Ask space staff for help."</string>
+    <string name="eligibility_organization_audience_required">"This event is open to members of its participating organizations. Ask your organization to confirm your membership, or contact the organizers."</string>
+    <string name="eligibility_organization_audience_not_ready">"Staff must review this event's audience before registration opens. Try again later or contact the organizers."</string>
+    <string name="eligibility_organization_audience_disabled">"This event isn't taking organization registrations right now. Contact the organizers."</string>
+    <string name="eligibility_organization_audience_changed">"This event's audience changed. Reload it to check whether you can still register."</string>
+    <string name="eligibility_handle_required">"Choose your username before continuing."</string>
 </resources>
