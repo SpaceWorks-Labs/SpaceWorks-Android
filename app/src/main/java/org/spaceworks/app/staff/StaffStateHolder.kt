@@ -1,5 +1,7 @@
 package org.spaceworks.app.staff
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.network.retryDeadlineMillis
 
 import org.spaceworks.app.platform.MobileText
@@ -202,10 +204,10 @@ class StaffStateHolder(
     }
     suspend fun accept(quantities:Map<Int,Int>){val row=state.value.selectedRequest?:return
         if(row.status !in setOf("pending","pending_approval")||!row.items.all{(quantities[it.id]?:0) in 0..it.requestedQuantity}||quantities.keys.any{id->row.items.none{it.id==id}}||quantities.values.none{it>0}){invalid(text(StaffStrings.STAFF_CHOOSE_A_VALID_QUANTITY_FOR_AT_LEAST_ONE_ITEM));return}
-        mutate("accept_request",{api.accept(it,row.id,AcceptRequest(acceptedQuantities=row.items.map{item->AcceptQuantity(itemId=item.id,quantity=quantities[item.id]?:0)}))}){updated->replaceRequest(updated,text(StaffStrings.STAFF_REQUEST_ACCEPTED))}}
+        mutate("accept_request",{api.accept(it,row.id,AcceptRequest(acceptedQuantities=row.items.map{item->AcceptQuantity(itemId=item.id,quantity=quantities[item.id]?:0)}))}){updated->replaceRequest(updated,text(StaffStrings.STAFF_REQUEST_ACCEPTED));AppTelemetry.track(TelemetryEvent.staffRequestDecided("accepted"))}}
     suspend fun reject(reason:String){val row=state.value.selectedRequest?:return;val value=reason.trim()
         if(row.status !in setOf("pending","pending_approval")||value.isEmpty()||value.length>1000){invalid(text(StaffStrings.STAFF_ADD_A_REASON_OF_UP_TO_1_000_CHARACTERS));return}
-        mutate("reject_request",{api.reject(it,row.id,RejectRequest(value))}){replaceRequest(it,text(StaffStrings.STAFF_REQUEST_REJECTED))}}
+        mutate("reject_request",{api.reject(it,row.id,RejectRequest(value))}){replaceRequest(it,text(StaffStrings.STAFF_REQUEST_REJECTED));AppTelemetry.track(TelemetryEvent.staffRequestDecided("rejected"))}}
     private fun replaceRequest(row:AdminRequest,notice:String){mutable.update{it.copy(selectedRequest=row,requests=it.requests.map{old->if(old.id==row.id)row else old},notice=notice)}}
     suspend fun decideBooking(id:Int,approve:Boolean,reason:String=""){val row=state.value.bookings.firstOrNull{it.id==id}?:return;val space=state.value.selectedSpace?:return
         if(row.status.value!="pending"||row.spaceId!=space.id)return
@@ -281,6 +283,7 @@ class StaffStateHolder(
         val version=handoverVersion
         mutate(if(h.returning)"return_request" else if(h.mode==StaffHandoverMode.DIRECT_ISSUE)"issue_direct_loan" else "issue_request",{scope->api.resolveQR(scope,QrResolve(raw.trim()))}){result->
             if(version!=handoverVersion)return@mutate
+            AppTelemetry.track(TelemetryEvent.qrScanned(if(container)"handover_container" else "handover_equipment"))
             if(result.qr.makerspace!=state.value.scope?.id||result.qr.status.value!="active"||!validPayload(result.qr.payload,64))throw validation(text(StaffStrings.STAFF_SCAN_AN_ACTIVE_CODE_FROM_THIS_MAKERSPACE))
             val type=result.qr.targetType.value;val current=state.value.handover?:return@mutate
             if(container){
@@ -380,7 +383,8 @@ class StaffStateHolder(
                     StaffHandoverMode.DIRECT_ISSUE->api.createDirect(scope,DirectLoanIssue(borrowerId=h.borrowerId!!,evidenceId=evidence,kitChecklist=kits,remark=h.remark,qrPayloads=h.scans.map{it.qr.payload},items=selectedItems(h))).id
                     StaffHandoverMode.DIRECT_RETURN->api.returnDirect(scope,h.loan!!.id,DirectLoanReturn(evidenceId=evidence,notes=h.remark.trim(),kitChecklist=kits,qrPayload=h.boxCode.takeIf{it.isNotEmpty()},resolutions=h.returns.map{it.body()})).id
                 }
-            }){id->if(version==handoverVersion){photo=null;photoVersion++;mutable.update{it.copy(handover=it.handover?.copy(receipt=text(StaffStrings.STAFF_1_S_2_S_RECORDED, if(h.returning)text(StaffStrings.STAFF_RETURN)else text(StaffStrings.STAFF_ISSUE), id),step=h.steps.lastIndex,photoReady=false),notice=text(StaffStrings.STAFF_EVIDENCE_PHOTO_1_S_IS_ATTACHED, evidence))}}}
+            }){id->AppTelemetry.track(when(h.mode){StaffHandoverMode.ISSUE->TelemetryEvent.staffItemIssued;StaffHandoverMode.DIRECT_ISSUE->TelemetryEvent.staffDirectHandout;else->TelemetryEvent.staffItemReturned})
+                if(version==handoverVersion){photo=null;photoVersion++;mutable.update{it.copy(handover=it.handover?.copy(receipt=text(StaffStrings.STAFF_1_S_2_S_RECORDED, if(h.returning)text(StaffStrings.STAFF_RETURN)else text(StaffStrings.STAFF_ISSUE), id),step=h.steps.lastIndex,photoReady=false),notice=text(StaffStrings.STAFF_EVIDENCE_PHOTO_1_S_IS_ATTACHED, evidence))}}}
         }finally{if(fresh(expected)&&version==handoverVersion&&state.value.handover?.receipt==null){mutable.update{it.copy(handover=it.handover?.copy(needsReload=true),notice=if(it.handover?.assignmentRecorded==true)text(StaffStrings.STAFF_BOX_ASSIGNMENT_WAS_RECORDED_CLOSE_AND_REFRESH_THE_LATEST_REQ)else text(StaffStrings.STAFF_CLOSE_AND_REFRESH_THE_LATEST_RECORD_BEFORE_TRYING_AGAIN))}}}
     }
     fun openCheckIn(id:Int){if(!canRequest()||!can("manage_events"))return;val event=state.value.events.firstOrNull{it.id==id&&it.makerspaceId==state.value.scope?.id}?:return
@@ -389,11 +393,11 @@ class StaffStateHolder(
         checkInVersion++;val version=checkInVersion;mutable.update{it.copy(person=null,attendanceNotice=null,error=null)}
         val body=checkInBody(token)
         if(!validPayload(token)||body==null){invalid(text(StaffStrings.STAFF_ENTER_A_VALID_EVENT_CHECK_IN_CODE));return}
-        mutate("manage_events",{api.resolveCheckIn(it,event.id,body)}){person->if(version==checkInVersion)mutable.update{it.copy(person=person)}}}
+        mutate("manage_events",{api.resolveCheckIn(it,event.id,body)}){person->AppTelemetry.track(TelemetryEvent.qrScanned("event_check_in"));if(version==checkInVersion)mutable.update{it.copy(person=person)}}}
     fun canConfirmAttendance()=canRequest()&&can("manage_events")&&state.value.person?.let{it.status=="registered"&&it.confirmable&&it.registrationId>0}==true
     suspend fun confirmAttendance(){if(!canConfirmAttendance())return;val person=state.value.person?:return;val version=checkInVersion
         mutate("manage_events",{api.markAttended(it,person.registrationId,EventAttendanceMark(source=EventAttendanceMarkSourceEnum.entries.first{it.value=="qr"}))}){row->
-            if(version==checkInVersion){if(row.registrationId!=person.registrationId||row.attendanceStatus!="attended")throw validation(text(StaffStrings.STAFF_ATTENDANCE_COULD_NOT_BE_CONFIRMED_SCAN_AGAIN_TO_CHECK_THE_LA));mutable.update{it.copy(person=null,attendanceNotice=text(StaffStrings.STAFF_ATTENDANCE_RECORDED_FOR_1_S, person.name))}}}
+            if(version==checkInVersion){if(row.registrationId!=person.registrationId||row.attendanceStatus!="attended")throw validation(text(StaffStrings.STAFF_ATTENDANCE_COULD_NOT_BE_CONFIRMED_SCAN_AGAIN_TO_CHECK_THE_LA));mutable.update{it.copy(person=null,attendanceNotice=text(StaffStrings.STAFF_ATTENDANCE_RECORDED_FOR_1_S, person.name))};AppTelemetry.track(TelemetryEvent.eventCheckIn)}}
         if(state.value.error!=null)mutable.update{it.copy(person=null)}
     }
     private fun invalid(detail:String){mutable.update{it.copy(error=detail)}}

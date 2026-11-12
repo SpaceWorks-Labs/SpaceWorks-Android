@@ -1,5 +1,7 @@
 package org.spaceworks.app.platform
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.R
 
 import android.Manifest
@@ -187,7 +189,11 @@ object NotificationAccess {
 fun rememberNotificationPermissionRequest(onResult: (Boolean) -> Unit): () -> Unit {
     val context = LocalContext.current
     val result = rememberUpdatedState(onResult)
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { result.value(it && NotificationAccess.allowed(context)) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        val granted = it && NotificationAccess.allowed(context)
+        AppTelemetry.track(TelemetryEvent.pushPermissionResult(granted))
+        result.value(granted)
+    }
     return {
         NotificationAccess.createChannel(context)
         if (NotificationAccess.needsRuntimePermission(Build.VERSION.SDK_INT,

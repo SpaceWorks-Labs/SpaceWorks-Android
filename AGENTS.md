@@ -14,7 +14,7 @@
 5. Tests per phase: unit tests for every view model / state holder and the networking core, a
    MockWebServer / URLProtocol stub test for every API call used, and UI tests for the phase's main flow.
    A phase with failing or skipped tests is not done.
-6. Secrets: none in the repo, ever. No analytics or third-party SDKs beyond §6 without asking.
+6. Secrets: none in the repo, ever. No analytics or third-party SDKs beyond §6 without asking (the 2026-11-12 owner telemetry extension below authorizes Firebase Analytics, PostHog, Microsoft Clarity and Sentry).
 7. Accessibility and dark mode are part of "done" in every phase, not a final polish pass.
 
 ## Branch delivery workflow
@@ -35,3 +35,6 @@ Owner backend deferment: complete and test the full native flow using an explici
 Owner UX extension: implement the shared `docs/mobile-auth-ux-spec.md`, first-use introduction/replay, branded native auth and full-app usage guidance. Keep master logos static, generate motion from `tokens/mobile-motion.json`, respect system reduced motion and native autofill, and exercise all sign-in methods in explicitly labelled DEBUG previews when the production native contract is unavailable. Authenticated account/security management remains A7. Green CI, scalable phone/tablet layouts and screenshot review apply to this checkpoint as to every phase.
 
 Owner repository boundary correction: keep app-specific UX specifications, motion JSON and implementation artifacts inside this mobile repository. The Design submodule stays pinned to the original brand baseline `fd28f825086a2cac7fa297881f1860b9d332db69`; do not push app-specific additions to the Design repository. Shared brand masters/tokens are consumed unchanged.
+
+Owner design and telemetry extension — 2026-11-12: the Design submodule now follows the Design-Kit `main` pin `b2aa5bb` (SpaceWorks-Labs/SpaceWorks-Design, 0.12.0), superseding the `fd28f825` baseline above. Theme, motion, Aurora card colours, open-licensed typography (Outfit for body, interface and display at 800/300, Unbounded for one accent phrase; owner decision 2026-11-13: no Gilroy or other non-OFL font is bundled or converted) and the Patch mascot come from it; app-specific UX and motion rules stay in this repository. Firebase Analytics, PostHog, Microsoft Clarity and Sentry are authorized per `docs/TELEMETRY.md`: off until configured and consented, no ad identifiers, debug and demo never send, no Crashlytics. `docs/PRD.md` stays byte-identical.
+

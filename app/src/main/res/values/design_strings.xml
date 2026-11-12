@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Owned copy: Patch.kt (accessibility description of the mascot illustration) -->
+    <string name="design_patch_description">"Patch, the Space Works mascot: a painted wolf holding a wrench"</string>
+    <!-- Owned copy: MemberActionsScreen.kt (Aurora ticket card label) -->
+    <string name="design_event_ticket">"Event ticket"</string>
+</resources>

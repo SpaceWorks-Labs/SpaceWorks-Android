@@ -1,5 +1,13 @@
 # Phase notes
 
+## UX-T — Design-Kit 0.12.0 and consent-gated telemetry (2026-11-12)
+
+Built by Claude. Design: `design/` follows SpaceWorks-Labs/SpaceWorks-Design `main` at `b2aa5bb`; the generated theme takes the solid-black dark palette, the `scrim` token (Material scrim for sheets), kit motion (app durations now name kit `fast`/`base` tokens and kit easing) and `cards.aurora` (membership card and event ticket). Typography (owner decision 2026-11-13, open-licensed fonts only): Outfit for interface text and display headings (800; light display 300), Unbounded for one accent phrase, converted from the kit's WOFF2 at prepare time with fontTools (platform-font fallback without it); no Gilroy face is bundled or converted, and both OFL texts are bundled. Patch, the mascot, appears on the first intro page (animated unless system animations are off) and on main empty lists, using the `dark/` art in dark theme.
+
+Telemetry: Firebase Analytics, PostHog, Microsoft Clarity and Sentry behind one facade, all off until configured and consented; consent sheet and Profile → Privacy and analytics; typed events from state holders at server-confirmed success; pseudonymous identity; scrubbed Sentry; replay paused on sensitive screens; debug and demo send nothing. See `docs/TELEMETRY.md`.
+
+Parity checklist: same event names, property values, screen names and consent copy as iOS `docs/TELEMETRY.md`; consent sheet (Help improve <app name>, switches for unasked purposes, Allow all, Save choices, Not now); Profile → Privacy and analytics with the withdrawal line.
+
 ## C12 — backend 0.12.0 contract, auth completion and staff step-up (2026-11-13)
 
 Built by Claude. `api/openapi.json` is re-pinned to backend `dev` 0.12.0 (see `docs/NATIVE-CONTRACT.md`); generated enums decode unknown values to their `unknown_default_open_api` case, the paged device-grant list, the booking-reject reason, nullable direct-loan memberships and the check-in `checkin_token` (UUID) / `credential` choice follow the new schema. Auth: `app_version` on every sign-in, refresh and step-up; 426 `native_app_update_required` shows the update gate and keeps the stored session; the remembered-device value (`device_trust`) is stored per server and sent as `X-Device-Trust` on sign-in routes; the unusual-sign-in challenge (`purpose: risk`) asks for the emailed six-digit code (`factor: email_code`) with resend; Google and OIDC handle the MFA-challenge branch; usernames (`handle_required`) block until chosen, sign-up asks for one with a live availability check; settings MFA enrolment. Staff: **Staff sign-in** on Profile creates a separate staff device grant (`/auth/device/staff-grant` + MFA) with its own encrypted pair; staff tools use it and fall back to member screens when it ends.

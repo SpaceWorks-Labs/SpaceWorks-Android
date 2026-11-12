@@ -47,10 +47,14 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
 @Composable internal fun MemberPanel(content:@Composable ColumnScope.()->Unit) {
     OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp),content=content)}
 }
-@Composable internal fun MemberEmpty(filtered:Boolean=false) {
+@Composable internal fun MemberEmpty(filtered:Boolean=false,mascot:Boolean=false) {
     val copyText=rememberMobileText()
-
-    Text(if(filtered)copyText(UiStrings.MOBILE_NO_RESULTS_TRY_ANOTHER_SEARCH) else copyText(UiStrings.MOBILE_NOTHING_HERE_YET),color=MaterialTheme.colorScheme.onSurfaceVariant)
+    val message=if(filtered)copyText(UiStrings.MOBILE_NO_RESULTS_TRY_ANOTHER_SEARCH) else copyText(UiStrings.MOBILE_NOTHING_HERE_YET)
+    // Patch only on a page's main empty list (one bold moment per layout); dashboard sections stay text.
+    if(mascot)Column(Modifier.fillMaxWidth(),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        Patch(120.dp)
+        Text(message,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyLarge)
+    } else Text(message,color=MaterialTheme.colorScheme.onSurfaceVariant)
 }
 @Composable internal fun MemberLoading() {
     val copyText=rememberMobileText()
@@ -88,7 +92,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
             if(load.value==null && load.error==null)item {MemberLoading()}
             load.error?.let {message->item {Column {BrandError(message);BrandTextButton(copyText(UiStrings.MOBILE_TRY_AGAIN),retry,!load.loading)}}}
             load.value?.let {page->
-                if(page.items.isEmpty())item {MemberEmpty(filtered)}
+                if(page.items.isEmpty())item {MemberEmpty(filtered,mascot=true)}
                 items(page.items,key=key){row(it)}
                 if(load.loading)item {LinearProgressIndicator(Modifier.fillMaxWidth())}
             }
@@ -97,6 +101,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     }
 }
 @Composable fun MemberHome(holder:MemberStateHolder,name:String,onInventory:()->Unit,demo:Boolean=false,requestedExtra:Pair<Long,String>?=null,onPayments:(()->Unit)?=null,guideProgress:GuideProgress?=null,bookingsEnabled:Boolean=false,onProfile:(()->Unit)?=null,usage:(@Composable ()->Unit)?=null) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.HOME)
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
@@ -171,6 +176,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     MemberPanel {Text(event.title,style=MaterialTheme.typography.titleMedium);Text(memberStatus(event.status,copyText));Text(memberDate(event.startsAt));event.waitlistPosition?.let {Text(copyText(UiStrings.MOBILE_WAITLIST_POSITION_VALUE_B06F51,it))};actions?.let {BrandTextButton(copyText(UiStrings.MOBILE_VIEW_REGISTRATION),{it.openRegistration(event)})}}
 }
 @Composable fun MemberInventory(holder:MemberStateHolder) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.INVENTORY)
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
@@ -240,6 +246,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     }
 }
 @Composable fun MemberActivityScreen(holder:MemberStateHolder) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.ACTIVITY)
     val copyText=rememberMobileText()
 
     val actions=LocalMemberActions.current
@@ -261,6 +268,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     }
 }
 @Composable fun MemberInboxScreen(holder:MemberStateHolder,notifications:@Composable ()->Unit={},onOpenUpdate:(String)->Unit={},navigationSequence:Long=0) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.INBOX)
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
@@ -298,6 +306,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     }}}
 }
 @Composable fun MemberCardScreen(holder:MemberStateHolder,onBack:()->Unit) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.MEMBERSHIP_CARD)
     val copyText=rememberMobileText()
 
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
@@ -306,10 +315,12 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
         BrandTextButton(copyText(UiStrings.MOBILE_BACK_TO_HOME),onBack)
         MemberLoaded(state.card,{scope.launch {holder.refreshCard()}}) {card->
             when {card.notIssued->Text(copyText(UiStrings.MOBILE_YOUR_MEMBERSHIP_CARD_HASN_T_BEEN_ISSUED_YET));!card.isActive || !card.qrActive->Text(copyText(UiStrings.MOBILE_THIS_CARD_IS_NOT_ACTIVE_ASK_YOUR_MAKERSPACE_FOR_HELP));card.qrImage.isNullOrBlank()->Text(copyText(UiStrings.MOBILE_YOUR_MEMBERSHIP_QR_CODE_IS_UNAVAILABLE_TRY_AGAIN_LATER));else->{
-                Text(card.printedName,style=MaterialTheme.typography.headlineMedium)
-                card.cardNumber?.let {Text(copyText(UiStrings.MOBILE_MEMBER_CARD_VALUE,it))}
-                MemberImage(card.qrImage,copyText(UiStrings.MOBILE_MEMBERSHIP_QR_CODE),Modifier.fillMaxWidth().height(280.dp),qr=true)
-                Text(copyText(UiStrings.MOBILE_ACTIVE_CARD),color=MaterialTheme.colorScheme.onPrimaryContainer)
+                AuroraCard(copyText(UiStrings.MOBILE_MEMBERSHIP_CARD)) {
+                    Text(card.printedName,style=MaterialTheme.typography.headlineMedium)
+                    card.cardNumber?.let {Text(copyText(UiStrings.MOBILE_MEMBER_CARD_VALUE,it))}
+                    AuroraQuietZone {MemberImage(card.qrImage,copyText(UiStrings.MOBILE_MEMBERSHIP_QR_CODE),Modifier.fillMaxWidth().height(280.dp),qr=true)}
+                    Text(copyText(UiStrings.MOBILE_ACTIVE_CARD),style=MaterialTheme.typography.labelLarge)
+                }
             }}
         }
         BrandTextButton(copyText(UiStrings.MOBILE_REFRESH_CARD),{scope.launch {holder.refreshCard()}},!state.card.loading)
@@ -327,7 +338,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     MemberPageColumn(if(selected==null)copyText(UiStrings.MOBILE_EXPLORE_EVENTS) else copyText(UiStrings.MOBILE_EVENT_DETAILS),makerspaceLabel(state.scope?.slug.orEmpty())) {
         BrandTextButton(if(selected==null)copyText(UiStrings.MOBILE_BACK_TO_HOME) else copyText(UiStrings.MOBILE_BACK_TO_EVENTS),{if(selected==null)onBack() else selected=null})
         if(selected!=null){val event=requireNotNull(selected);MemberImage(event.imageUrl,event.title,Modifier.fillMaxWidth().height(180.dp));Text(event.title,style=MaterialTheme.typography.headlineMedium);Text(event.description);Text(memberDate(event.startsAt));Text(event.location);Text(memberStatus(event.availability,copyText));Text(copyText(UiStrings.MOBILE_VALUE_VALUE_78C505,event.currency,event.paymentAmount));actions?.let {action->BrandButton(copyText(UiStrings.MOBILE_REGISTER_FOR_THIS_EVENT),{(actionScope?:scope).launch {action.openEvent(event.id)}},event.registrationOpen)}}
-        else MemberLoaded(state.events,{scope.launch {holder.refreshEvents()}}) {events->if(events.isEmpty())MemberEmpty() else events.forEach {event->OutlinedCard(onClick={selected=event},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(event.title,style=MaterialTheme.typography.titleLarge);Text(memberDate(event.startsAt));Text(memberStatus(event.availability,copyText))}}}}
+        else MemberLoaded(state.events,{scope.launch {holder.refreshEvents()}}) {events->if(events.isEmpty())MemberEmpty(mascot=true) else events.forEach {event->OutlinedCard(onClick={selected=event},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(event.title,style=MaterialTheme.typography.titleLarge);Text(memberDate(event.startsAt));Text(memberStatus(event.availability,copyText))}}}}
     }
 }
 @Composable private fun MemberSpacesScreen(holder:MemberStateHolder,onBack:()->Unit) {
@@ -342,7 +353,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     MemberPageColumn(if(selected==null)copyText(UiStrings.MOBILE_FIND_A_SPACE) else copyText(UiStrings.MOBILE_SPACE_DETAILS),makerspaceLabel(state.scope?.slug.orEmpty())) {
         BrandTextButton(if(selected==null)copyText(UiStrings.MOBILE_BACK_TO_HOME) else copyText(UiStrings.MOBILE_BACK_TO_SPACES),{if(selected==null)onBack() else selected=null})
         if(selected!=null){val space=requireNotNull(selected);MemberImage(space.imageUrl,space.name,Modifier.fillMaxWidth().height(180.dp));Text(space.name,style=MaterialTheme.typography.headlineMedium);Text(space.description);Text(space.location);Text(copyText(UiStrings.MOBILE_CAPACITY_VALUE,space.capacity));Text(copyText(UiStrings.MOBILE_APPROVAL_VALUE,memberStatus(space.approvalMode,copyText)));if(!space.showAvailability)Text(copyText(UiStrings.MOBILE_ASK_YOUR_MAKERSPACE_ABOUT_AVAILABILITY))}
-        else MemberLoaded(state.spaces,{scope.launch {holder.refreshSpaces()}}) {spaces->if(spaces.isEmpty())MemberEmpty() else spaces.forEach {space->OutlinedCard(onClick={if(actions!=null)(actionScope?:scope).launch {actions.openSpace(space.id)}else selected=space},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(space.name,style=MaterialTheme.typography.titleLarge);Text(space.location);Text(copyText(UiStrings.MOBILE_CAPACITY_VALUE,space.capacity))}}}}
+        else MemberLoaded(state.spaces,{scope.launch {holder.refreshSpaces()}}) {spaces->if(spaces.isEmpty())MemberEmpty(mascot=true) else spaces.forEach {space->OutlinedCard(onClick={if(actions!=null)(actionScope?:scope).launch {actions.openSpace(space.id)}else selected=space},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(space.name,style=MaterialTheme.typography.titleLarge);Text(space.location);Text(copyText(UiStrings.MOBILE_CAPACITY_VALUE,space.capacity))}}}}
     }
 }
 @Composable fun MemberProfileSummary(holder:MemberStateHolder) {
@@ -377,7 +388,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     MemberPageColumn(copyText(UiStrings.MOBILE_BOOKINGS),makerspaceLabel(state.scope?.slug.orEmpty())) {
         BrandTextButton(copyText(UiStrings.MOBILE_BACK),onBack)
         MemberLoaded(state.overview,{scope.launch {holder.refreshOverview()}}) {overview->
-            if(overview.bookings.items.isEmpty())MemberEmpty()
+            if(overview.bookings.items.isEmpty())MemberEmpty(mascot=true)
             overview.bookings.items.forEach {MemberBookingPanel(it)}
             if(overview.bookings.next!=null)BrandButton(
                 if(state.bookingMoreBusy)copyText(UiStrings.MOBILE_LOADING)else copyText(UiStrings.MOBILE_LOAD_MORE_BOOKINGS),

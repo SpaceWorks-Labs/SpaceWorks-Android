@@ -42,14 +42,20 @@ class NativePackagingTests(unittest.TestCase):
 
 
 class BundledFontLicenseTests(unittest.TestCase):
-    def inspect(self, license_bytes):
+    def inspect(self, license_bytes, outfit=True):
         with tempfile.TemporaryDirectory() as directory:
             apk = pathlib.Path(directory) / 'fixture.apk'
             with zipfile.ZipFile(apk, 'w') as archive:
                 archive.writestr('lib/arm64-v8a/libfixture.so', elf([(0, 0, 16384)]))
                 if license_bytes is not None:
                     archive.writestr(check.FONT_LICENSE_PATH, license_bytes)
+                if outfit:
+                    archive.writestr(check.OUTFIT_LICENSE_PATH, check.OUTFIT_LICENSE_SOURCE.read_bytes())
             return check.inspect_apk(apk)
+
+    def test_missing_outfit_license_fails(self):
+        with self.assertRaisesRegex(ValueError, 'Outfit'):
+            self.inspect(check.FONT_LICENSE_SOURCE.read_bytes(), outfit=False)
 
     def test_full_existing_font_license_is_packaged_alongside_native_checks(self):
         result = self.inspect(check.FONT_LICENSE_SOURCE.read_bytes())

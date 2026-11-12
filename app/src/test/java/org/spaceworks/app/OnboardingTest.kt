@@ -18,8 +18,10 @@ class OnboardingTest {
     }
     @Test fun motionComesFromPinnedBrandAndReducedMotionHasNoCustomDelay() {
         val motion=Json.parseToJsonElement(File("../tokens/mobile-motion.json").readText()).jsonObject
-        assertEquals(motion["duration_ms"]!!.jsonObject["color"]!!.jsonPrimitive.int,BrandMotion.COLOR)
-        assertEquals(motion["duration_ms"]!!.jsonObject["overlay_enter"]!!.jsonPrimitive.int,BrandMotion.OVERLAY_ENTER)
+        // App durations name Design-Kit motion tokens: fast 120, base 180, slow 240 (0.12.0).
+        assertEquals("fast",motion["duration_ms"]!!.jsonObject["color"]!!.jsonPrimitive.content)
+        assertEquals(120,BrandMotion.COLOR);assertEquals(180,BrandMotion.OVERLAY_ENTER);assertEquals(120,BrandMotion.OVERLAY_EXIT)
+        assertEquals(240,BrandMotion.SLOW);assertArrayEquals(floatArrayOf(.16f,1f,.3f,1f),BrandMotion.overlayEnterEasing,0f)
         assertEquals(0,BrandMotion.BLOCKING_DELAY);assertEquals(0,BrandMotion.duration(200,true));assertFalse(BrandMotion.REDUCED_SPATIAL)
         assertEquals("none",motion["onboarding"]!!.jsonObject["logo_motion"]!!.jsonPrimitive.content)
     }

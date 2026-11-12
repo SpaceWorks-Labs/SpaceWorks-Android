@@ -1,5 +1,7 @@
 package org.spaceworks.app.payments
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.network.retryDeadlineMillis
 
 import org.spaceworks.app.platform.MobileText
@@ -89,6 +91,8 @@ class PaymentsStateHolder(private val api:PaymentsGateway,private val files:Paym
             val input=api.intent(scope,id);if(!matches(expected,reference))return null
             require(input.paymentId==id && input.valid()) {text(PaymentStrings.PAYMENT_PAYMENT_SETUP_IS_UNAVAILABLE_CONTACT_YOUR_MAKERSPACE)}
             mutable.update {it.copy(checkout=PaymentCheckout(PaymentCheckoutPhase.PRESENTING,id,reference))}
+            checkoutVendor=when(input){is PaymentIntent.Stripe->"stripe";is PaymentIntent.Razorpay->"razorpay"}
+            AppTelemetry.track(TelemetryEvent.paymentStarted(requireNotNull(checkoutVendor)))
             return PreparedPayment(reference,input)
         }catch(c:CancellationException){if(matches(expected,reference))stop(id,text(PaymentStrings.PAYMENT_CHECKOUT_WAS_INTERRUPTED_CHECK_THE_PAYMENT_STATUS_BEFORE_TRY));throw c}
         catch(f:Exception){val message=failure(f,expected);if(matches(expected,reference))stop(id,message);return null}
@@ -155,16 +159,20 @@ class PaymentsStateHolder(private val api:PaymentsGateway,private val files:Paym
                 if(!canRequest()){mutable.update {it.copy(checkout=PaymentCheckout(PaymentCheckoutPhase.AWAITING,id,message=text(PaymentStrings.PAYMENT_CHECK_THE_PAYMENT_STATUS_AFTER_THE_TIMER_FINISHES)))};return false}
                 val rows=api.payments(scope);if(!valid())return false
                 mutable.update {it.copy(records=MemberLoad(rows))}
-                if(terminal(id)){loadDocuments();return expected==epoch.get() && state.value.scope==scope}
+                if(terminal(id)){finishPayment(if(state.value.checkout.phase==PaymentCheckoutPhase.COMPLETED)"paid" else "cancelled");loadDocuments();return expected==epoch.get() && state.value.scope==scope}
             }
             if(valid()) {
                 if(reason==SheetCloseReason.SUBMITTED)mutable.update {it.copy(checkout=PaymentCheckout(PaymentCheckoutPhase.AWAITING,id,message=text(PaymentStrings.PAYMENT_YOUR_PAYMENT_IS_AWAITING_SERVER_CONFIRMATION_CHECK_ITS_STATU)))}
                 else stop(id,message?:if(reason==SheetCloseReason.CANCELLED)text(PaymentStrings.PAYMENT_CHECKOUT_CLOSED_CHECK_THE_CURRENT_PAYMENT_STATUS_BEFORE_TRYI) else text(PaymentStrings.PAYMENT_CHECKOUT_COULD_NOT_FINISH_CHECK_THE_PAYMENT_STATUS_AND_TRY_A))
+                finishPayment(when(reason){SheetCloseReason.SUBMITTED->"pending";SheetCloseReason.CANCELLED->"cancelled";else->"failed"})
             }
             return expected==epoch.get() && state.value.scope==scope
         }catch(c:CancellationException){if(valid())mutable.update {it.copy(checkout=PaymentCheckout(PaymentCheckoutPhase.AWAITING,id,message=text(PaymentStrings.PAYMENT_CHECK_THE_PAYMENT_STATUS_BEFORE_TRYING_AGAIN)))};throw c}
-        catch(f:Exception){if(current())failure(f,expected);if(valid())stop(id,text(PaymentStrings.PAYMENT_COULDN_T_CHECK_THIS_PAYMENT_REFRESH_ITS_STATUS_BEFORE_TRYING));return false}
+        catch(f:Exception){if(current())failure(f,expected);if(valid()){stop(id,text(PaymentStrings.PAYMENT_COULDN_T_CHECK_THIS_PAYMENT_REFRESH_ITS_STATUS_BEFORE_TRYING));finishPayment("failed")};return false}
     }
+    /** Telemetry: the server-selected rail of the live checkout, reported once with the server-read outcome. */
+    private var checkoutVendor:String?=null
+    private fun finishPayment(outcome:String){checkoutVendor?.let {AppTelemetry.track(TelemetryEvent.paymentFinished(it,outcome))};checkoutVendor=null}
     private fun matches(expected:Long,reference:String)=expected==epoch.get() && state.value.checkout.reference==reference
     private fun stop(id:String,message:String){mutable.update {it.copy(checkout=PaymentCheckout(PaymentCheckoutPhase.STOPPED,id,message=message))}}
     private fun terminal(id:String):Boolean = when(record(id)?.status){
@@ -191,7 +199,7 @@ class PaymentsStateHolder(private val api:PaymentsGateway,private val files:Paym
         try {val bytes=api.documentPDF(scope,id);currentCoroutineContext().ensureActive();if(expected!=epoch.get()||version!=previewVersion.get())return
             withContext(NonCancellable+Dispatchers.IO){prepared=files.create(bytes,document.number)}
             currentCoroutineContext().ensureActive()
-            if(expected==epoch.get()&&version==previewVersion.get()){mutable.update {it.copy(preview=prepared)};prepared=null}
+            if(expected==epoch.get()&&version==previewVersion.get()){mutable.update {it.copy(preview=prepared)};prepared=null;AppTelemetry.track(TelemetryEvent.receiptDownloaded)}
         }catch(c:CancellationException){throw c}catch(f:Exception){val message=failure(f,expected);if(expected==epoch.get()&&version==previewVersion.get())mutable.update {it.copy(documentError=message)}}
         finally{runCatching{prepared?.close()};if(expected==epoch.get()&&version==previewVersion.get())mutable.update {it.copy(documentBusy=false)}}
     }

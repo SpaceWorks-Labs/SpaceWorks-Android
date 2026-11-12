@@ -40,6 +40,7 @@ class GeneratedDeletionFlow(private val holder:AccountDeletionStateHolder,privat
 @Composable fun AccountDeletionScreen(holder:AccountDeletionStateHolder,onBack:()->Unit,onFix:(Int?,AccountFixDestination)->Unit,
     makerName:(Int)->String?={null},canOpenStaff:(Int?)->Boolean={false},trustedHost:String?=null,
     googleCredential:(suspend(String)->String)?=null) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.ACCOUNT_DELETION)
     val s by holder.state.collectAsState()
     val scope=rememberCoroutineScope()
     val focus=LocalFocusManager.current

@@ -1,5 +1,7 @@
 package org.spaceworks.app.notifications
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.platform.MobileText
 import org.spaceworks.app.platform.MobileCopyException
 import org.spaceworks.app.platform.failure
@@ -53,6 +55,13 @@ class LinkStateHolder(private val server:HttpUrl,private val authorize:suspend(I
                     select(destination.makerspaceId)
                     if(request!=sequence.get())continue
                     mutable.value=LinkState(delivered=AuthorizedNavigation(destination,request,notification))
+                    // Destination route template (same names as TelemetryScreen), never the resource id.
+                    val r=destination.resourceId!=null
+                    val section=when(destination.section){MobileSection.INVENTORY->if(r)"inventory_detail" else "inventory"
+                        MobileSection.PAYMENTS->if(r)"payment_detail" else "payments";MobileSection.BOOKINGS->if(r)"booking_detail" else "bookings"
+                        MobileSection.SPACES->if(r)"space_detail" else "spaces";MobileSection.EVENTS->if(r)"event_detail" else "home"
+                        MobileSection.REGISTRATION->"event_detail";else->destination.section.name.lowercase()}
+                    AppTelemetry.track(if(notification)TelemetryEvent.pushOpened(section) else TelemetryEvent.deepLinkOpened(section))
                     return
                 }catch(cancelled:CancellationException){if(request==sequence.get())mutable.update {it.copy(busy=false)};throw cancelled}
                 catch(_:Exception){if(request==sequence.get()){mutable.update {it.copy(busy=false,pending=null,pendingLegacy=null,requiredMaker=null,error=text(CoreStrings.CORE_COULDN_T_OPEN_THIS_UPDATE_TRY_AGAIN_FROM_INBOX))};return}}

@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import org.spaceworks.app.platform.rememberMobileText
 import org.spaceworks.app.ui.*
 
-/** Brand StatCard: a neutral panel, Gilroy 600 tabular number in accent ink and a full-opacity label. */
+/** Brand StatCard: a neutral panel, Outfit 600 tabular number in accent ink and a full-opacity label. */
 @Composable private fun StatCard(label:String,value:String,modifier:Modifier=Modifier) {
     OutlinedCard(modifier.semantics(mergeDescendants=true) {},colors=CardDefaults.outlinedCardColors(containerColor=MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {

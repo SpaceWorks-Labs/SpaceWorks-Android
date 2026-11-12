@@ -1,5 +1,7 @@
 package org.spaceworks.app
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.network.retryDeadlineMillis
 
 import org.spaceworks.app.platform.MobileText
@@ -37,6 +39,7 @@ class ConnectionStateHolder(initialUrl: String, val locked: Boolean, private val
             health(url)
             save(url.toString())
             mutable.value = state.value.copy(url = url.toString(), connecting = false, connected = true)
+            AppTelemetry.track(TelemetryEvent.serverConnected(locked))
         } catch (cancelled: CancellationException) {
             mutable.value = state.value.copy(connecting = false)
             throw cancelled

@@ -62,6 +62,7 @@ fun CameraQrScanner(
     sessionKey: Any = Unit,
     enabled: Boolean = true,
 ) {
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.STAFF_SCAN)
     val text = rememberMobileText()
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current

@@ -11,7 +11,7 @@
 
 Find tools. Book a space. Keep your making moving.
 
-A native **Kotlin + Jetpack Compose** app for makerspace members and staff, with Material 3 controls, adaptive phone/tablet navigation, supplied Gilroy typography, light/dark themes and accessible text scaling. Runs on **Android 8+ (API 26)** and targets **API 36**.
+A native **Kotlin + Jetpack Compose** app for makerspace members and staff, with Material 3 controls, adaptive phone/tablet navigation, Design-Kit typography and colours, light/dark themes and accessible text scaling. Runs on **Android 8+ (API 26)** and targets **API 36**.
 
 Also available as a native [iOS app](https://github.com/SpaceWorks-HQ/SpaceWorks-iOS).
 
@@ -66,6 +66,20 @@ Current evidence is bound to tested source commit [`3a400c7`](https://github.com
 | Packaging and review | 16 KB APK/ELF alignment and exact bundled Unbounded OFL checks; **210 original full-OS screenshots** manually reviewed |
 
 The matrix covers compact through large phones, 600/800/840/1024dp tablets and tablet landscape, across light/dark and large text. Emulators do not establish tactile quality, live provider/backend operation or the separate physical 16 KB runtime-device gate.
+
+## Design
+
+The `design/` submodule follows the Space Works Design-Kit `main` at `b2aa5bb` (0.12.0). The native
+theme is generated from its `tokens/tokens.json`: Warm Cream light palette, the solid-black dark palette
+(`bg` #000000, `surface` #0B0B0B, `panel` #141414), the `scrim` token for sheets and dialogs, the kit
+motion durations/easing (app-specific onboarding and reduced-motion rules stay in `tokens/mobile-motion.json`)
+and the `cards.aurora` look for the membership card and event ticket. Type follows the kit: Outfit for
+interface text and display headings (Outfit 800, light display Outfit 300) and Unbounded for one accent
+phrase; only OFL fonts are bundled. Converted
+from the kit's WOFF2 at build time ([font provenance](docs/licenses/FONT-PROVENANCE.md)). Patch, the
+mascot, appears on main empty lists and the first intro page, with the dark-surface variants in dark
+theme and a static frame when system animations are off. Optional, consent-gated telemetry is described
+in [TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Configuration and documentation
 

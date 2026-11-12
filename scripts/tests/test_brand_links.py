@@ -101,7 +101,7 @@ class BrandLinksTest(unittest.TestCase):
             (root / 'tokens').mkdir()
             (root / 'tokens/theme.json').write_text(json.dumps({'light': {}, 'dark': {}}))
             (root / 'tokens/mobile-motion.json').write_text(json.dumps({
-                'duration_ms': {}, 'easing': {'overlay_enter_cubic_bezier': [0.32, 0.72, 0, 1]},
+                'duration_ms': {}, 'easing': {},
                 'onboarding': {'blocking_delay_ms': 0},
                 'reduce_motion': {'opacity_duration_ms': 0, 'spatial_transitions': False}}))
             brand = {'theme_tokens': 'tokens/theme.json', 'app_icon': 'branding/icon.svg',
@@ -109,11 +109,10 @@ class BrandLinksTest(unittest.TestCase):
             for key in ('logo_symbol', 'logo_symbol_reversed', 'logo_symbol_one_colour_ink',
                         'logo_stacked', 'logo_stacked_reversed', 'logo_stacked_one_colour_ink'):
                 brand[key] = 'branding/icon.svg'
-            for face, filename in [('regular', 'Regular'), ('medium', 'Medium'), ('semibold', 'SemiBold'), ('bold', 'Bold')]:
-                source = SCRIPTS.parent / 'design/fonts' / ('Gilroy-' + filename + '.woff')
-                target = root / ('branding/gilroy_' + face + '.woff')
-                shutil.copyfile(source, target)
-                brand['font_' + face] = str(target.relative_to(root))
+            for key, filename in [('font_sans', 'Outfit-Variable'), ('font_accent', 'Unbounded-Variable')]:
+                target = root / ('branding/' + filename + '.woff2')
+                shutil.copyfile(SCRIPTS.parent / 'design/fonts' / (filename + '.woff2'), target)
+                brand[key] = str(target.relative_to(root))
             config = root / 'branding/brand.json'
             config.write_text(json.dumps(brand))
             command = [sys.executable, str(root / 'scripts/prepare.py')]

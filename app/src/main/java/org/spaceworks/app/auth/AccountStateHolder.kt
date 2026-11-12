@@ -1,5 +1,7 @@
 package org.spaceworks.app.auth
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.TelemetryEvent
 import org.spaceworks.app.network.retryDeadlineMillis
 
 import org.spaceworks.app.platform.MobileText
@@ -59,6 +61,7 @@ class AccountStateHolder(private val api:AuthGateway,private val signupAllowed:(
     fun back(){if(!state.value.busy){restoreChallenge=null;mutable.value=state.value.copy(route=null,error=null,notice=null)}}
     private fun email(value:String):String=value.trim().also {if(!it.contains('@') || it.contains(' '))throw AuthMessage(text(CoreStrings.CORE_ENTER_YOUR_EMAIL_ADDRESS))}
     suspend fun signUp(name:String,address:String,password:String,confirmation:String,phone:String)=run {expected->
+        AppTelemetry.track(TelemetryEvent.signUpStarted)
         if(!signupAllowed())throw AuthMessage(text(CoreStrings.CORE_ACCOUNT_REGISTRATION_IS_UNAVAILABLE_ON_THIS_SERVER))
         if(name.trim().isBlank())throw AuthMessage(text(CoreStrings.CORE_ENTER_YOUR_NAME))
         if(password.length<8)throw AuthMessage(text(CoreStrings.CORE_USE_AT_LEAST_8_CHARACTERS))
@@ -68,11 +71,13 @@ class AccountStateHolder(private val api:AuthGateway,private val signupAllowed:(
         val normalized=email(address);api.signUp(name.trim(),normalized,password,phone.trim(),username)
         if(!accept(expected))return@run
         mutable.value=state.value.copy(route=AccountRoute.SIGNUP_ACK,email=normalized,notice=null)
+        AppTelemetry.track(TelemetryEvent.signUpCompleted)
     }
     suspend fun forgot(address:String,resend:Boolean=false)=run {expected->
         if(resend && now()<state.value.resendAtMillis)return@run
         val normalized=email(address);api.forgotPassword(normalized)
         if(!accept(expected))return@run
+        AppTelemetry.track(TelemetryEvent.passwordResetRequested)
         mutable.value=state.value.copy(route=AccountRoute.RESET_PASSWORD,email=normalized,resendAtMillis=now()+60000,
             notice=text(CoreStrings.CORE_IF_THE_DETAILS_ARE_VALID_A_VERIFICATION_EMAIL_HAS_BEEN_SENT))
     }

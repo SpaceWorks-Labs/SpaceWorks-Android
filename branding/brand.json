@@ -15,8 +15,14 @@
   "logo_stacked": "design/logo/lockup-stacked.svg",
   "logo_stacked_reversed": "design/logo/lockup-stacked-reversed.svg",
   "logo_stacked_one_colour_ink": "design/logo/lockup-stacked-one-colour-ink.svg",
-  "font_regular": "design/fonts/Gilroy-Regular.woff",
-  "font_medium": "design/fonts/Gilroy-Medium.woff",
-  "font_semibold": "design/fonts/Gilroy-SemiBold.woff",
-  "font_bold": "design/fonts/Gilroy-Bold.woff"
+  "font_sans": "design/fonts/Outfit-Variable.woff2",
+  "font_accent": "design/fonts/Unbounded-Variable.woff2",
+  "telemetry": {
+    "sentry_dsn": null,
+    "sentry_environment": null,
+    "sentry_traces_sample_rate": 0.1,
+    "posthog_api_key": null,
+    "posthog_host": "https://eu.i.posthog.com",
+    "clarity_project_id": null
+  }
 }

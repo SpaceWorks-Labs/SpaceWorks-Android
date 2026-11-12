@@ -62,6 +62,7 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
 /** All physical mutations require visible review and confirmation. Camera callbacks resolve only. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun StaffScreen(holder:StaffStateHolder,demo:Boolean,onBack:()->Unit,previewScope:org.spaceworks.app.member.MemberScope?=null,dashboard:(@Composable ()->Unit)?=null){
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.STAFF_TOOLS)
     val text=rememberMobileText()
 
     val s by holder.state.collectAsStateWithLifecycle();val work=rememberCoroutineScope()
@@ -343,6 +344,7 @@ if(s.nextPages[key]!=null)BrandTextButton(text(StaffStrings.STAFF_LOAD_MORE),mor
 private class StaffCameraCapture(val target:StaffPhotoTarget,val file:File,val uri:Uri)
 
 @Composable private fun StaffPhotoPicker(holder:StaffStateHolder,demo:Boolean,enabled:Boolean,ready:Boolean,photoRevision:Long){
+    org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.STAFF_EVIDENCE)
     val text=rememberMobileText()
     val context=LocalContext.current;val work=rememberCoroutineScope()
     // Keep the launch ticket through recomposition/holder replacement; a late callback must reject
