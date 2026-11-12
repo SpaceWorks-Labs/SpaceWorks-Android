@@ -16,4 +16,14 @@
     <string name="history_line">"%1$s: %2$d requested, %3$d issued, %4$d returned"</string>
     <string name="history_line_issues">"%1$d damaged, %2$d missing"</string>
     <string name="history_load_more">"Load more"</string>
+    <string name="waiver_title">"Makerspace waiver"</string>
+    <string name="waiver_help">"Read the space's current waiver. Accepting it is recorded against your membership."</string>
+    <string name="waiver_pending">"Accept the space's current waiver before borrowing, booking or checking in."</string>
+    <string name="waiver_review">"Review waiver"</string>
+    <string name="waiver_version">"Version %1$s"</string>
+    <string name="waiver_none">"This space has no waiver to accept."</string>
+    <string name="waiver_accept">"I have read and accept this waiver"</string>
+    <string name="waiver_accepting">"Accepting…"</string>
+    <string name="waiver_accepted">"You accepted version %1$s."</string>
+    <string name="waiver_changed">"The waiver changed while you were reading. Review the current version below."</string>
 </resources>

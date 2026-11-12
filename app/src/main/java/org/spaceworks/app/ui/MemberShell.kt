@@ -184,6 +184,9 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                     }
                 }}
                 if(clock<(content?.retryAtMillis?:0))Text(copyText(UiStrings.MOBILE_TRY_AGAIN_IN_VALUES,retrySecondsRemaining(clock,requireNotNull(content).retryAtMillis)),Modifier.padding(16.dp),color=MaterialTheme.colorScheme.onPrimaryContainer)
+                if(features!=null && destination==0 && featureRoute==null && actionState?.route==null && !showingPayments && !showingStaff && !showingGuide && !showingMessaging &&
+                    content?.scope?.id==state.selectedId && content?.overview?.value?.waiverRequired==true)
+                    org.spaceworks.app.features.WaiverPendingBanner {featureRoute=org.spaceworks.app.features.FeatureRoute.WAIVER}
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     when {
                         showingGuide -> UsageGuideScreen(bundle.demo,staffAvailable,{showingGuide=false},
@@ -196,7 +199,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 org.spaceworks.app.theme.BrandLinks.privacyURL?.takeIf {org.spaceworks.app.account.AccountLinkPolicy.safe(it)}?.let {url->
                                     BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_privacy),{runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}})}
                             })
-                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute)) {featureRoute=null}
+                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
                             dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
@@ -227,6 +230,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 if(grant!=null && staffAvailable)BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_SIGN_OUT_OF_STAFF_TOOLS),{scope.launch {showingStaff=false;staff?.clear();grant.signOut()}},!state.busy,modifier=Modifier.semantics {testTag="staff-sign-out"})
                                 onAccount?.let {BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_title),it,!state.busy,modifier=Modifier.semantics {testTag="account-entry"})}
                                 if(payments!=null)BrandTextButton(copyText(PaymentStrings.PAYMENT_PAYMENTS),{showingPayments=true},!state.busy,modifier=Modifier.semantics {testTag="payments-entry"})
+                                if(features!=null)BrandTextButton(copyText(org.spaceworks.app.features.FeatureStrings.WAIVER_TITLE),{featureRoute=org.spaceworks.app.features.FeatureRoute.WAIVER},!state.busy,modifier=Modifier.semantics {testTag="waiver-entry"})
                                 state.memberships.filter {it.id!=state.selectedId}.forEach {membership ->
                                     BrandTextButton(copyText(UiStrings.MOBILE_SWITCH_TO_VALUE,makerspaceLabel(membership.slug)),{bundle.links?.clear();bundle.holder.select(membership.id)},!state.busy)
                                 }

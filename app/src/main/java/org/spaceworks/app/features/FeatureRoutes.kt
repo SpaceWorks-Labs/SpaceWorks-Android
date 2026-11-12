@@ -8,11 +8,13 @@ import org.spaceworks.app.platform.rememberMobileText
 import org.spaceworks.app.ui.BrandButton
 
 /** Member overlays opened from Home, Activity or Profile. */
-enum class FeatureRoute { HISTORY }
+enum class FeatureRoute { HISTORY, WAIVER }
 
-@Composable fun FeatureRouteScreen(features:MemberFeatures,route:FeatureRoute,onBack:()->Unit) {
+/** [onMembershipChanged] refreshes the member overview after an action that changes eligibility or activity. */
+@Composable fun FeatureRouteScreen(features:MemberFeatures,route:FeatureRoute,onMembershipChanged:()->Unit,onBack:()->Unit) {
     when(route) {
         FeatureRoute.HISTORY->BorrowingHistoryScreen(features.history,onBack)
+        FeatureRoute.WAIVER->WaiverScreen(features.waiver,onBack,onMembershipChanged)
     }
 }
 

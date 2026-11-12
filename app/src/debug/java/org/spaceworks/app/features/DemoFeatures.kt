@@ -21,4 +21,13 @@ class DemoBorrowingHistoryGateway:BorrowingHistoryGateway {
     }
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text))
+/** Debug-only waiver: accepting flips a local flag; nothing is recorded anywhere. */
+class DemoWaiverGateway:WaiverGateway {
+    override suspend fun waiver(scope:MemberScope):Waiver {
+        delay(120)
+        return Waiver(true,"Sample waiver for this preview.\n\nI will follow the induction for every tool, wear the protective equipment it needs and report damage straight away.","2026.2")
+    }
+    override suspend fun accept(scope:MemberScope):String? {delay(200);return "2026.2"}
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text))
