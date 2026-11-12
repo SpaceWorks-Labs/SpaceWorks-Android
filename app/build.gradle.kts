@@ -143,6 +143,8 @@ openApiGenerate {
         "WebsiteSection_website_url" to "String",
         "TenantBootstrapMakerspace_opening_hours" to "kotlinx.serialization.json.JsonElement",
         "NullEnum" to "kotlinx.serialization.json.JsonElement",
+        // A 51-way undiscriminated oneOf: the app reads each report as lossless JSON against its catalog spec.
+        "AnalyticsReportResponse" to "kotlinx.serialization.json.JsonElement",
         "Palette_pairs_inner_inner" to "kotlinx.serialization.json.JsonElement",
         "TenantBootstrapMakerspace_opening_hours_oneOf_weekly" to "kotlinx.serialization.json.JsonElement"
     ))

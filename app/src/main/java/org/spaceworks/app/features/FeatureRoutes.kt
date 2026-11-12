@@ -14,7 +14,7 @@ import org.spaceworks.app.platform.rememberMobileText
 import org.spaceworks.app.ui.BrandButton
 
 /** Member overlays opened from Home, Activity or Profile. */
-enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL, FEEDS, LINK_PROVIDER }
+enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL, FEEDS, STAFF_REPORTS, LINK_PROVIDER }
 
 /** [onMembershipChanged] refreshes the member overview after an action that changes eligibility or activity. */
 @Composable fun FeatureRouteScreen(features:MemberFeatures,route:FeatureRoute,member:MemberStateHolder?,googleClientId:String?,onMembershipChanged:()->Unit,onBack:()->Unit) {
@@ -26,6 +26,7 @@ enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL, FEEDS, LINK_PROVIDER }
         FeatureRoute.CONTEXTUAL->ContextualRequestScreen(features.contextual,requestContexts(memberState.overview.value,copyText),
             memberState.inventory.value?.items.orEmpty(),onBack,onMembershipChanged)
         FeatureRoute.FEEDS->CalendarFeedsScreen(features.feeds,onBack)
+        FeatureRoute.STAFF_REPORTS->StaffReportsScreen(features.reports,onBack)
         FeatureRoute.LINK_PROVIDER->if(googleClientId!=null)ProviderLinkScreen(features.link,googleClientId,onBack) else onBack()
     }
 }

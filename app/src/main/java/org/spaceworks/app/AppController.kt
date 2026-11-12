@@ -147,7 +147,7 @@ class AppController(application:Application):AndroidViewModel(application) {
             holder::endLocalSession,holder::foreground,holder::dropConfirmedMembership)
         insights=org.spaceworks.app.insights.InsightsStateHolder(org.spaceworks.app.insights.GeneratedInsightsGateway(session,staffSession),
             failureText={copyText.apiFailure(it)},unavailableText={copyText(org.spaceworks.app.copy.CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)},onUnauthorized={holder.foreground()})
-        features=org.spaceworks.app.features.createMemberFeatures(session,copyText) {holder.foreground()}
+        features=org.spaceworks.app.features.createMemberFeatures(session,staffSession,copyText,{holder.foreground()}) {staffGrant.foreground()}
         val deletedNotice=application.getString(R.string.deletion_deleted)
         val bundle=AuthBundle(holder,store,accounts=accounts,member=member,actions=actions,origin=session.server.toString(),push=push,links=links,pushConfigured=FcmRegistration.configured(application),sessionEpoch={store.snapshot().epoch},payments=payments,staff=staff,
             staffAvailable={holder.state.value.selected?.let {staffGrant.covers(it.id)}==true},management=management,

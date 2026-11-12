@@ -201,7 +201,10 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                             })
                         featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),member,state.googleClientId,{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
-                            dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
+                            dashboard={
+                                insights?.let {org.spaceworks.app.insights.StaffDashboardPanel(it)}
+                                if(features!=null)org.spaceworks.app.features.StaffReportsEntry {featureRoute=org.spaceworks.app.features.FeatureRoute.STAFF_REPORTS}
+                            })
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
                         showingStaff -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
                         showingPayments && paymentState?.scope?.id!=state.selectedId -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))

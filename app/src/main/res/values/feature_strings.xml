@@ -88,6 +88,16 @@
     <string name="feeds_add_to_calendar">"Add to calendar"</string>
     <string name="feeds_no_calendar_app">"No calendar app could open the feed. Make a new link from a device with a calendar app."</string>
     <string name="feeds_done">"Done"</string>
+    <string name="reports_title">"Reports"</string>
+    <string name="reports_help">"Reports this space lets you read. The list comes from the server and follows your staff roles."</string>
+    <string name="reports_open">"Open reports"</string>
+    <string name="reports_empty">"No reports are available to you here."</string>
+    <string name="reports_unavailable">"Not available: %1$s"</string>
+    <string name="reports_unavailable_plain">"Not available here"</string>
+    <string name="reports_no_rows">"Nothing to show for this period."</string>
+    <string name="reports_rows_shown">"Showing %1$d of %2$d rows. Open the web console for the full report."</string>
+    <string name="reports_cell">"%1$s: %2$s"</string>
+    <string name="reports_back_to_list">"All reports"</string>
     <string name="link_title">"Link Google sign-in"</string>
     <string name="link_help">"Add Google as another way to sign in to this account. Confirm it's you first."</string>
     <string name="link_password">"Password"</string>

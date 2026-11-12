@@ -56,6 +56,17 @@ class DemoCalendarFeedGateway:CalendarFeedGateway {
     override suspend fun revoke(scope:MemberScope,kind:FeedKind){delay(150);enabled[kind]=false}
 }
 
+/** Debug-only report catalog with one chart and one table. */
+class DemoStaffReportsGateway:StaffReportsGateway {
+    private val loans=ReportEntry("most_lent","Most lent items","Loans",true,null,listOf("product","count"),"product","count","loans",null,"Most lent items")
+    private val money=ReportEntry("revenue_over_time","Revenue over time","Payments",false,"Payments reports need the finance role.",emptyList(),null,null,"",null,"")
+    override suspend fun catalog(scope:MemberScope):List<ReportEntry> {delay(120);return listOf(loans,money)}
+    override suspend fun report(scope:MemberScope,entry:ReportEntry):ReportView {
+        delay(150)
+        return ReportView(listOf("Cordless drill" to "18","Soldering station" to "11","Multimeter" to "7"),emptyList(),3)
+    }
+}
+
 /** Debug-only linking: the sample password is "demo"; no provider or server is contacted. */
 class DemoProviderLinkGateway:ProviderLinkGateway {
     private var verified=false
@@ -65,4 +76,4 @@ class DemoProviderLinkGateway:ProviderLinkGateway {
     override suspend fun link(provider:String,idToken:String,nonce:String):String {delay(150);return provider}
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text))
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text))
