@@ -45,8 +45,8 @@
     <string name="insights_stocktakes_awaiting_approval">"Stocktakes awaiting approval"</string>
     <string name="insights_pending_payments">"Pending payments"</string>
     <string name="insights_failed_emails">"Failed emails"</string>
-    <string name="insights_messages">"Text and WhatsApp messages"</string>
-    <string name="insights_messages_help">"Choose whether this makerspace can reach you by text message or WhatsApp. App notifications and email are set separately."</string>
+    <string name="insights_messages">"Text messages"</string>
+    <string name="insights_messages_help">"Choose whether this makerspace can reach you by text message. App notifications and email are set separately."</string>
     <string name="insights_sms">"Text messages (SMS)"</string>
     <string name="insights_whatsapp">"WhatsApp"</string>
     <string name="insights_on">"On"</string>
