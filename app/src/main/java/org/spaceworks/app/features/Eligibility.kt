@@ -7,9 +7,9 @@ import kotlinx.serialization.json.contentOrNull
 import org.spaceworks.app.platform.MobileCopyKey
 
 /**
- * Member eligibility refusals (PRD "Eligibility refusal codes and copy", web `eligibilityCopy.ts`).
- * The same copy is used for requests, contextual requests, bookings, registrations and renewals;
- * unknown codes keep the server's `detail`.
+ * Member eligibility refusals (PRD "Eligibility refusal codes and copy", with 0.12.0 machine-access codes).
+ * The same copy is used for requests, contextual requests, bookings and registrations; unknown codes
+ * (renewal refusals included) keep the server's `detail`.
  */
 object Eligibility {
     /** The refusal code: a string, or DRF's one-element list shape `{"code":["membership_required"]}`. */
@@ -27,10 +27,6 @@ object Eligibility {
         "borrower_restricted","member_restricted"->FeatureStrings.ELIGIBILITY_RESTRICTED
         "no_machine_access"->FeatureStrings.ELIGIBILITY_NO_MACHINE_ACCESS
         "machine_access_expired"->FeatureStrings.ELIGIBILITY_MACHINE_ACCESS_EXPIRED
-        "event_only_product"->FeatureStrings.ELIGIBILITY_EVENT_ONLY_PRODUCT
-        "self_renewal_off"->FeatureStrings.ELIGIBILITY_SELF_RENEWAL_OFF
-        "renewal_limit"->FeatureStrings.ELIGIBILITY_RENEWAL_LIMIT
-        "renewals_off"->FeatureStrings.ELIGIBILITY_RENEWALS_OFF
         "machine_intake_unavailable"->FeatureStrings.ELIGIBILITY_MACHINE_INTAKE_UNAVAILABLE
         "organization_audience_required"->FeatureStrings.ELIGIBILITY_ORGANIZATION_AUDIENCE_REQUIRED
         "organization_audience_not_ready"->FeatureStrings.ELIGIBILITY_ORGANIZATION_AUDIENCE_NOT_READY

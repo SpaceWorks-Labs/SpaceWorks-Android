@@ -22,8 +22,10 @@ class EligibilityTest {
         listOf("membership_required","membership_inactive","membership_lapsed","waiver_acceptance_required","presence_required",
             "borrower_restricted","member_restricted","no_machine_access","machine_access_expired","machine_intake_unavailable",
             "organization_audience_required","organization_audience_not_ready","organization_audience_disabled",
-            "organization_audience_changed","handle_required","renewal_limit","renewals_off","self_renewal_off","event_only_product")
+            "organization_audience_changed","handle_required")
             .forEach {assertNotNull(it,Eligibility.copy(it))}
+        // Renewal refusals carry their own server copy (`renewal_refusal` / detail).
+        assertNull(Eligibility.copy("renewal_limit"))
         val unknown=Errors.map(403,"""{"detail":"Bookings need a phone number.","code":"phone_required"}""")
         assertNull(unknown.localCopy);assertEquals("Bookings need a phone number.",unknown.detail)
         assertNull(Eligibility.code(kotlinx.serialization.json.JsonArray(emptyList())))
