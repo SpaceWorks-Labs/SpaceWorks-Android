@@ -1,5 +1,11 @@
 # Phase notes
 
+## C12 — backend 0.12.0 contract, auth completion and staff step-up (2026-11-13)
+
+Built by Claude. `api/openapi.json` is re-pinned to backend `dev` 0.12.0 (see `docs/NATIVE-CONTRACT.md`); generated enums decode unknown values to their `unknown_default_open_api` case, the paged device-grant list, the booking-reject reason, nullable direct-loan memberships and the check-in `checkin_token` (UUID) / `credential` choice follow the new schema. Auth: `app_version` on every sign-in, refresh and step-up; 426 `native_app_update_required` shows the update gate and keeps the stored session; the remembered-device value (`device_trust`) is stored per server and sent as `X-Device-Trust` on sign-in routes; the unusual-sign-in challenge (`purpose: risk`) asks for the emailed six-digit code (`factor: email_code`) with resend; Google and OIDC handle the MFA-challenge branch; usernames (`handle_required`) block until chosen, sign-up asks for one with a live availability check; settings MFA enrolment. Staff: **Staff sign-in** on Profile creates a separate staff device grant (`/auth/device/staff-grant` + MFA) with its own encrypted pair; staff tools use it and fall back to member screens when it ends.
+
+Parity checklist: sign-in → "Check your email" code step with resend; "Choose your username"; Profile → Staff sign-in / Sign out of staff tools; update-required screen on 426; Security → Set up two-step sign-in.
+
 ## V1 — v2 PRD extras: usage, staff dashboard, messaging consent, phone restore (2026-10-18)
 
 Built by Claude. Adds the backend v2 PRD features that were published but missing: member Home **Your activity** (my-usage), staff **Today at a glance** (dashboard counters, handover queue tiles, report widgets), Profile **Text and WhatsApp messages** consent, and **Restore a deleted account** by phone. All five operations go through the generated client and are listed in `scripts/contract.py`; copy lives in the new `insights_strings.xml` catalog (registered in `tokens/mobile-copy.json`). `NullEnum` is mapped to `JsonElement` to keep the generator compiling.

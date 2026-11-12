@@ -4,11 +4,19 @@ The native staff interface covers pending request quantities and accept/reject r
 issue and return, direct handout, booking approval/refusal and event attendance confirmation.
 Scanning identifies equipment or a person; it never performs a physical action by itself.
 
-Staff tools open only when `/auth/me` reports `session_authority: "native_staff"` **and** the
-selected membership grants the action. Password and social device sign-in snapshot staff
-authority; phone sign-in never does, and a member promoted after sign-in must sign in again. Every
-staff call carries the selected makerspace in `X-Makerspace-Id`. Live inventory, evidence upload
-and attendance success against an owner deployment are not claimed.
+Since backend 0.12.0 a member device grant never carries staff authority. A person whose `/auth/me`
+reports `has_staff_role` and whose selected makerspace lists the `staff` track sees **Staff sign-in**
+on Profile: it calls `POST /auth/device/staff-grant` with the member bearer, a fresh attestation and
+`app_version`, then finishes the authenticator challenge (or enrolment) at `/auth/mfa/verify|confirm`
+without Authorization. The result is a second device grant (`authority: staff`) fixed to that
+makerspace, stored in its own encrypted record and refreshed by its own single-flight refresh. Staff
+tools open only while that grant's `/auth/me` reports `session_authority: "native_staff"`, its single
+`staff_roles` entry is the selected makerspace and the action is listed there. Every staff call uses the
+staff grant's bearer and `X-Makerspace-Id` equal to its makerspace. The member grant keeps serving member
+screens. **Sign out of staff tools** ends only the staff grant; signing out of the app, sign out
+everywhere, account deletion or a revoked member session also drop it. A 401 on a staff call re-reads
+the staff identity, so a lost staff role hides the tools. Live inventory, evidence upload and
+attendance success against an owner deployment are not claimed.
 
 ## Explore the flow
 

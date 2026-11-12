@@ -1,11 +1,30 @@
-# Native backend contract (backend 1a–1d)
+# Native backend contract (backend 0.12.0)
 
-`api/openapi.json` is pinned to the mobile-backend snapshot SHA-256
-`962e6a4b5b6927db0214c11e4b3b5ff688f660dccb8e674a7403b996cb1d8460` (760 paths). The backend's
-`docs/mobile/MOBILE-APP-PRD.md` (v2) and `docs/mobile-integration.md` describe the rules the schema
-cannot express. `docs/PRD.md` stays the byte-identical v1 owner copy; where the two differ, the
-v2 text is read as the owner's update of the "planned (1a–1d)" items. Every call goes through the
-generated client; `scripts/contract.py` lists each operation the app uses.
+`api/openapi.json` is pinned to backend `SpaceWorks-Labs/SpaceWorks` `dev`, release **0.12.0**, commit
+`5c7f573363e97aa3844d7eb9f372cba31f918c3b`, SHA-256
+`8045528d3ea3def75e4abef01a5cac8317fb95ceb721ed714698d54c0a02ab7e` (2,211 paths, 4,357 schemas). The
+backend's `docs/mobile/MOBILE-APP-PRD.md` (Version 4, 2026-11-09) and `docs/mobile-integration.md` describe
+the rules the schema cannot express. `docs/PRD.md` stays the byte-identical v1 owner copy. Every call goes
+through the generated client; `scripts/contract.py` lists each operation the app uses.
+
+## Re-pin to 0.12.0 (2026-11-12)
+
+- **Tolerant enums.** The generator runs with `enumUnknownDefaultCase=true`: an enum value newer than the
+  pin decodes to `unknown_default_open_api` instead of failing the whole payload (PRD §7 "Schema renames in
+  0.12.0"). Screens show the raw server value or a neutral label for that case. Tests decode 0.12.0 payloads
+  with new values: `event_grants[].permissions` `judge`, bootstrap `request_access: contact`, payment
+  `subject_type: loan_rental`, document `kind: bill`, preference `feature: presence`, space `kind: machine`,
+  inventory label `Lent at events only`, website `section_order: EDITORIAL` / section `kind: judges`.
+- **Renamed components** (regeneration only): `DevicePlatformEnum`, the per-branch attestation tags,
+  `SocialLoginResult`, `PermissionsAbdEnum`, `SubjectType4a3Enum`, `Feature977Enum`, `Kind1c7Enum`,
+  `Kind429Enum`, `PublicWebsite`, `DefaultRegistrationAudienceEnum`, `IssueRejectDispositionEnum`,
+  `Phase740Enum`, `EvidenceType5ffEnum`, `PublicRequestSubmitSchema`, `SessionAuthorityEnum`.
+- **Runtime fixes:** `GET /auth/device/grants` reads the paged `DeviceGrantPage` (`?page=`, bounded, next
+  link validated); booking reject sends the required `{reason}` (staff enter it, at most 1,000 characters);
+  direct-loan members accept a null `membership_id` (guest passes); check-in responses accept missing
+  `event_status` / `payment_status`; request submission no longer sends `Idempotency-Key` (removed from the
+  contract and no longer read by the backend).
+- `PATCH /auth/me`, newly on an already-selected path, is excluded from generation (unused).
 
 ## What the app now does against the real contract
 
