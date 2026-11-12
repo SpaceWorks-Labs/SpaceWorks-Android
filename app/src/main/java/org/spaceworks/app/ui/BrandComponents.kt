@@ -37,7 +37,8 @@ import org.spaceworks.app.R
     Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.fillMaxWidth().semantics {liveRegion=LiveRegionMode.Polite})
 }}
 enum class FieldRole { TEXT, NAME, IDENTITY, EMAIL, PHONE, PASSWORD, NEW_PASSWORD, SERVER, CODE, ONE_TIME_CODE, NUMBER }
-val BrandAccentFont=FontFamily(Font(R.font.unbounded,FontWeight.Medium))
+/** Unbounded: at most one short accent phrase per screen, never beside Patch. */
+val BrandAccentFont=org.spaceworks.app.theme.BrandFonts.accent
 @Composable fun BrandField(value:String,onValueChange:(String)->Unit,label:String,modifier:Modifier=Modifier,
     enabled:Boolean=true,readOnly:Boolean=false,secret:Boolean=false,
     role:FieldRole=if(secret)FieldRole.PASSWORD else FieldRole.TEXT,onDone:(()->Unit)?=null,errorMessage:String?=null) {

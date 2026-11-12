@@ -3,7 +3,7 @@ package org.spaceworks.app.platform
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.toArgb
 import com.stripe.android.paymentsheet.PaymentSheet
-import org.spaceworks.app.R
+import org.spaceworks.app.theme.BrandFonts
 import org.spaceworks.app.theme.BrandTokens
 import org.spaceworks.app.theme.DarkScheme
 import org.spaceworks.app.theme.LightScheme
@@ -24,7 +24,7 @@ internal fun stripeBrandAppearance():PaymentSheet.Appearance {
     return PaymentSheet.Appearance(
         colorsLight=colors(LightScheme),colorsDark=colors(DarkScheme),
         shapes=PaymentSheet.Shapes(cornerRadiusDp=10f,borderStrokeWidthDp=1f),
-        typography=PaymentSheet.Typography(sizeScaleFactor=1f,fontResId=R.font.gilroy),
+        typography=PaymentSheet.Typography(sizeScaleFactor=1f,fontResId=BrandFonts.sdkFontResource),
         primaryButton=PaymentSheet.PrimaryButton(
             colorsLight=PaymentSheet.PrimaryButtonColors(
                 background=LightScheme.primary.toArgb(),onBackground=LightScheme.onPrimary.toArgb(),
@@ -35,7 +35,7 @@ internal fun stripeBrandAppearance():PaymentSheet.Appearance {
                 border=DarkScheme.primary.toArgb(),successBackgroundColor=BrandTokens.Dark.success.toArgb(),
                 onSuccessBackgroundColor=BrandTokens.Dark.onSuccess.toArgb()),
             shape=PaymentSheet.PrimaryButtonShape(cornerRadiusDp=10f,borderStrokeWidthDp=1f),
-            typography=PaymentSheet.PrimaryButtonTypography(fontResId=R.font.gilroy)
+            typography=PaymentSheet.PrimaryButtonTypography(fontResId=BrandFonts.sdkFontResource)
         )
     )
 }

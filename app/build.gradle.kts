@@ -10,6 +10,8 @@ plugins {
 if(file("google-services.json").isFile)apply(plugin="com.google.gms.google-services")
 val brandFile = rootProject.file("branding/brand.json")
 val brand = JsonSlurper().parse(brandFile) as Map<*, *>
+// Design-Kit WOFF2 inputs; a null role falls back to the sans face (see scripts/brand_fonts.py).
+val brandFonts = brand.filterKeys {it.toString().startsWith("font_")}.values.filterIsInstance<String>().map {rootProject.file(it)}
 android {
     namespace = "org.spaceworks.app"
     compileSdk = 36
@@ -58,12 +60,12 @@ android {
     lint { abortOnError = true }
 }
 val prepareBrand by tasks.registering(Exec::class) {
-    dependsOn("testBrandLinks","testBrandFonts")
+    dependsOn("testBrandLinks","testBrandFonts","testBrandTheme")
     inputs.files(brand.filterKeys {it.toString().startsWith("logo_")}.values.map {rootProject.file(it as String)})
     inputs.file(rootProject.file("tokens/mobile-motion.json"))
     inputs.file(rootProject.file("scripts/brand_links.py"))
     inputs.file(rootProject.file("scripts/brand_fonts.py"))
-    inputs.files(brand.filterKeys {it.toString().startsWith("font_")}.values.map {rootProject.file(it as String)})
+    inputs.files(brandFonts)
     inputs.files(brandFile, rootProject.file(brand["theme_tokens"] as String), rootProject.file(brand["app_icon"] as String), rootProject.file("scripts/prepare.py"))
     outputs.dirs(layout.buildDirectory.dir("generated/source/brand"),layout.buildDirectory.dir("generated/res/brand"))
     outputs.file(layout.buildDirectory.file("generated/brand-fonts.json"))
@@ -112,8 +114,13 @@ val testMobileCopyGenerator by tasks.registering(Exec::class) {
 val testBrandFonts by tasks.registering(Exec::class) {
     workingDir(rootProject.projectDir)
     inputs.files(rootProject.file("scripts/brand_fonts.py"),rootProject.file("scripts/tests/test_brand_fonts.py"))
-    inputs.files(brand.filterKeys {it.toString().startsWith("font_")}.values.map {rootProject.file(it as String)})
+    inputs.files(brandFonts)
     commandLine(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3","-m","unittest","discover","-s","scripts/tests","-p","test_brand_fonts.py","-v")
+}
+val testBrandTheme by tasks.registering(Exec::class) {
+    workingDir(rootProject.projectDir)
+    inputs.files(rootProject.file("scripts/prepare.py"),rootProject.file("scripts/tests/test_brand_theme.py"),rootProject.file("tokens/mobile-motion.json"),rootProject.file(brand["theme_tokens"] as String))
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3","-m","unittest","discover","-s","scripts/tests","-p","test_brand_theme.py","-v")
 }
 val testBrandLinks by tasks.registering(Exec::class) {
     workingDir(rootProject.projectDir)

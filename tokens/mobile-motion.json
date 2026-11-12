@@ -1,14 +1,16 @@
 {
-  "version": 1,
-  "provenance": "design/docs/ui-brand-spec.md, section E motion table; owner mobile UX extension 2026-10-16",
+  "version": 2,
+  "provenance": "Shared durations and easing name Design-Kit motion tokens (design/tokens/tokens.json `motion`, 0.12.0 at b2aa5bb); onboarding and reduced-motion rules are the owner mobile UX extension 2026-10-16",
   "duration_ms": {
-    "color": 120,
-    "expand": 200,
-    "overlay_enter": 240,
-    "overlay_exit": 160
+    "color": "fast",
+    "expand": "base",
+    "overlay_enter": "base",
+    "overlay_exit": "fast"
   },
   "easing": {
-    "overlay_enter_cubic_bezier": [0.32, 0.72, 0.0, 1.0]
+    "overlay_enter": "enter",
+    "overlay_exit": "exit",
+    "content": "standard"
   },
   "onboarding": {
     "blocking_delay_ms": 0,

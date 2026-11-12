@@ -16,6 +16,9 @@ import zipfile
 PAGE = 16 * 1024
 FONT_LICENSE_PATH = 'assets/licenses/OFL-Unbounded.txt'
 FONT_LICENSE_SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'docs/licenses/OFL-Unbounded.txt'
+# Every bundled OFL font ships its full licence text (Design-Kit fonts/LICENSES, copied unchanged).
+OUTFIT_LICENSE_PATH = 'assets/licenses/OFL-Outfit.txt'
+OUTFIT_LICENSE_SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'docs/licenses/OFL-Outfit.txt'
 
 
 def elf_load_alignments(data):
@@ -49,6 +52,8 @@ def inspect_apk(path):
         license_bytes = apk.read(FONT_LICENSE_PATH)
         if license_bytes != FONT_LICENSE_SOURCE.read_bytes():
             raise ValueError('Packaged Unbounded copyright/OFL license must match the existing source bytes')
+        if apk.namelist().count(OUTFIT_LICENSE_PATH) != 1 or apk.read(OUTFIT_LICENSE_PATH) != OUTFIT_LICENSE_SOURCE.read_bytes():
+            raise ValueError('APK must contain the full Outfit copyright/OFL license matching the source bytes')
         for item in apk.infolist():
             if not item.filename.startswith(('lib/arm64-v8a/', 'lib/x86_64/')) or not item.filename.endswith('.so'):
                 continue
