@@ -28,6 +28,8 @@ data class AccountManagementState(
     val archive: ByteArray? = null,
     val passwordRevision: Long = 0,
     val capabilities: AccountCapabilities? = null, val capabilitiesLoading: Boolean = false,
+    /** Authenticator setup started from settings, and the recovery codes it returned. */
+    val mfaSetup: AccountMfaSetup? = null, val recoveryCodes: List<String> = emptyList(),
 )
 
 /** Account-owned state; the controller clears it before switching account or makerspace. */
@@ -198,6 +200,21 @@ class AccountManagementStateHolder(
             clear(); onSecurityEnded(emptyList(), text(AccountCopy.MFA_CHANGED))
         }
     }
+    /** Settings enrolment for members (PRD §7 "Authenticator setup from account settings"). */
+    suspend fun startMfa(password: String) {
+        val security = state.value.security ?: return
+        if (security.enabled || !security.available || !validPassword(password)) return
+        act({ api.startMfa(it, password) }) { setup, _ -> mutable.update { it.copy(mfaSetup = setup) } }
+    }
+    suspend fun confirmMfa(code: String) {
+        val setup = state.value.mfaSetup ?: return
+        if (code.length != 6 || !code.all { it in '0'..'9' }) { mutable.update { it.copy(error = text(AccountCopy.MFA_CODE_REQUIRED)) }; return }
+        act({ api.confirmMfa(it, setup.challenge, code) }) { codes, _ ->
+            mutable.update { it.copy(mfaSetup = null, recoveryCodes = codes, security = it.security?.copy(enabled = true), notice = text(AccountCopy.MFA_ENABLED)) }
+        }
+    }
+    fun cancelMfa() { if (!state.value.busy) mutable.update { it.copy(mfaSetup = null) } }
+    fun acknowledgeRecoveryCodes() { mutable.update { it.copy(recoveryCodes = emptyList()) } }
     private fun validPassword(value: String): Boolean {
         if (value.isNotEmpty() && value.length <= 1024) return true
         mutable.update { it.copy(error = text(AccountCopy.PASSWORD_REQUIRED)) }; return false

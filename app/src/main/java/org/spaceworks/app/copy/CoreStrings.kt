@@ -140,4 +140,7 @@ object CoreStrings {
     val CORE_YOUR_CODE_EXPIRED_SEND_A_NEW_CODE=MobileCopyKey(R.string.core_your_code_expired_send_a_new_code,"Your code expired. Send a new code.")
     val CORE_SIGNED_OUT_ON_EVERY_DEVICE_AND_BROWSER=MobileCopyKey(R.string.core_signed_out_on_every_device_and_browser,"Signed out on every device and browser.")
     val CORE_THIS_SIGN_IN_PROVIDER_IS_UNAVAILABLE_TRY_AGAIN=MobileCopyKey(R.string.core_this_sign_in_provider_is_unavailable_try_again,"This sign-in provider is unavailable. Try again.")
+    val CORE_WE_SENT_A_NEW_CODE=MobileCopyKey(R.string.core_we_sent_a_new_code,"We sent a new code.")
+    val CORE_NO_MORE_CODES_CAN_BE_SENT_SIGN_IN_AGAIN=MobileCopyKey(R.string.core_no_more_codes_can_be_sent_sign_in_again,"No more codes can be sent. Sign in again.")
+    val CORE_USE_3_30_LETTERS_NUMBERS_DOTS_UNDERSCORES_OR_HYPHENS=MobileCopyKey(R.string.core_use_3_30_letters_numbers_dots_underscores_or_hyphens,"Use 3–30 letters, numbers, dots, underscores or hyphens; start and end with a letter or number.")
 }

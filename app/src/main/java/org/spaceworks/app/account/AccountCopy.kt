@@ -8,6 +8,8 @@ enum class AccountCopy(val english: String) {
     RECOVERY_CHANGED("Your recovery codes have changed. Save them, then sign in again."),
     MFA_STILL_ENABLED("The authenticator is still enabled. Refresh and try again."),
     MFA_CHANGED("Two-step sign-in has changed. Sign in again to continue."),
+    MFA_ENABLED("Two-step sign-in is on. Other devices and browsers were signed out."),
+    MFA_CODE_REQUIRED("Enter the six-digit code from your authenticator app."),
     PASSWORD_REQUIRED("Enter your current password."),
     PASSWORD_NEW_REQUIRED("Enter a new password."),
     PASSWORD_CONFIRMATION("Passwords don't match."),

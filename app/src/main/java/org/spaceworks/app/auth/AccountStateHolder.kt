@@ -24,11 +24,13 @@ class AccountStateHolder(private val api:AuthGateway,private val signupAllowed:(
         :this(api,signupAllowed,onVerified,now,MobileText.ENGLISH)
 
     private val mutable=MutableStateFlow(AccountState())
+    /** Sign-up username with live availability (0.12.0: every account needs one). */
+    val handle=HandleStateHolder(api,text=text)
     val state=mutable.asStateFlow()
     private class FlowGeneration {val mutex=Mutex()}
     @Volatile private var generation=FlowGeneration()
     /** Clear private context synchronously, even while an older request/callback is suspended. */
-    fun clear(){val retry=state.value.retryAtMillis;generation=FlowGeneration();restoreChallenge=null;mutable.value=AccountState(retryAtMillis=retry)}
+    fun clear(){handle.clear();val retry=state.value.retryAtMillis;generation=FlowGeneration();restoreChallenge=null;mutable.value=AccountState(retryAtMillis=retry)}
     private var restoreChallenge:PhoneChallenge?=null
     /** Native restore of an archived phone-only account: code by SMS, then a new password. */
     suspend fun restoreStart(phone:String,resend:Boolean=false)=run {expected->
@@ -61,7 +63,9 @@ class AccountStateHolder(private val api:AuthGateway,private val signupAllowed:(
         if(name.trim().isBlank())throw AuthMessage(text(CoreStrings.CORE_ENTER_YOUR_NAME))
         if(password.length<8)throw AuthMessage(text(CoreStrings.CORE_USE_AT_LEAST_8_CHARACTERS))
         if(password!=confirmation)throw AuthMessage(text(CoreStrings.CORE_PASSWORDS_DON_T_MATCH))
-        val normalized=email(address);api.signUp(name.trim(),normalized,password,phone.trim())
+        val username=handle.state.value.handle
+        if(username.isNotEmpty() && !HandleStateHolder.valid(username))throw AuthMessage(text(CoreStrings.CORE_USE_3_30_LETTERS_NUMBERS_DOTS_UNDERSCORES_OR_HYPHENS))
+        val normalized=email(address);api.signUp(name.trim(),normalized,password,phone.trim(),username)
         if(!accept(expected))return@run
         mutable.value=state.value.copy(route=AccountRoute.SIGNUP_ACK,email=normalized,notice=null)
     }

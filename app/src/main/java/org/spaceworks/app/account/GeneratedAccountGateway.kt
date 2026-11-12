@@ -76,7 +76,23 @@ class GeneratedAccountGateway(
         AccountRows(page.results.map { AccountSessionRow(it.id, it.kind.value, it.current, it.createdAt.toString(), it.lastUsedAt?.toString(), it.expiresAt?.toString()) }, page.next != null)
     }
     override suspend fun grants(scope: MemberScope?): List<AccountGrantRow> = checked(scope) {
-        api(DeviceAuthApi::class.java, scope).apiV1AuthDeviceGrantsList().requireBody().map { AccountGrantRow(it.id.toString(), it.platform, it.status, it.createdAt.toString(), it.lastUsedAt.toString()) }
+        // 0.12.0 pages the device list (`DeviceGrantPage`, `?page=`); read every page, bounded.
+        val rows = mutableListOf<DeviceGrant>()
+        var page: Int? = 1
+        while (page != null && page <= MAX_GRANT_PAGES) {
+            val result = api(DeviceAuthApi::class.java, scope).apiV1AuthDeviceGrantsList(page = page).requireBody()
+            rows += result.results
+            page = result.next?.let { next -> nextGrantPage(next.toString(), page!!) }
+        }
+        rows.map { AccountGrantRow(it.id.toString(), it.platform.value, it.status, it.createdAt.toString(), it.lastUsedAt.toString(), it.authority.value) }
+    }
+    private fun nextGrantPage(value: String, current: Int): Int {
+        val origin = session.server
+        val url = origin.resolve(value) ?: throw invalid(text(AccountCopy.PAGE_UNAVAILABLE))
+        val next = url.queryParameter("page")?.toIntOrNull()
+        if (url.scheme != origin.scheme || url.host != origin.host || url.port != origin.port || url.encodedPath != "/api/v1/auth/device/grants" ||
+            next == null || next != current + 1) throw invalid(text(AccountCopy.PAGE_UNAVAILABLE))
+        return next
     }
     override suspend fun revokeSession(scope: MemberScope, id: String) = checked(scope) {
         api(MemberAccountApi::class.java, scope).apiV1MemberMakerspacesAccountSessionsDestroy(scope.id, opaque(id)).success()
@@ -107,6 +123,21 @@ class GeneratedAccountGateway(
     override suspend fun regenerateRecovery(scope: MemberScope?, password: String): List<String> = checked(scope, password = true) {
         api(MFAApi::class.java, scope).apiV1AuthMfaRecoveryCreate(MFAPassword(password)).requireBody().recoveryCodes
     }
+    override suspend fun startMfa(scope: MemberScope?, password: String): AccountMfaSetup = checked(scope, password = true) {
+        val challenge = api(MFAApi::class.java, scope).apiV1AuthMfaCreate(MFAEnrollmentStart(password)).requireBody()
+        // Starting enrolment invalidates the current tokens; the challenge is the credential from here on.
+        val setup = session.mfa.apiV1AuthMfaEnrollCreate(MFAChallenge(challenge.challenge)).requireBody()
+        AccountMfaSetup(challenge.challenge, setup.secret, setup.qrDataUrl)
+    }
+    override suspend fun confirmMfa(scope: MemberScope?, challenge: String, code: String): List<String> {
+        guard(scope)
+        val result = session.mfa.apiV1AuthMfaConfirmCreate(MFAVerify(challenge = challenge, code = code)).requireBody()
+        val refresh = result.refresh?.takeIf { it.isNotBlank() }
+        // The server re-issues tokens on the SAME grant; replace the stored pair at once.
+        if (refresh == null || result.access.isBlank() || !session.replaceCurrentPair(owningInstallationEpoch, org.spaceworks.app.network.TokenPair(result.access, refresh)))
+            throw ApiFailure(401, text(AccountCopy.SIGN_IN_AGAIN), "session_expired", null)
+        return result.recoveryCodes.orEmpty()
+    }
     override suspend fun startPhone(scope: MemberScope?, phone: String) { checked(scope) { api(AuthApi::class.java, scope).apiV1AuthPhoneLinkStartCreate(PhoneStart(phone)).requireBody() } }
     override suspend fun confirmPhone(scope: MemberScope?, phone: String, code: String): AccountPhone = checked(scope) {
         phone(api(AuthApi::class.java, scope).apiV1AuthPhoneLinkConfirmCreate(PhoneConfirm(phone, code)).requireBody())
@@ -128,7 +159,7 @@ class GeneratedAccountGateway(
         AccountRows(page.results.map(::export), page.next != null)
     }
     override suspend fun requestExport(scope: MemberScope): AccountExport = checked(scope) {
-        export(api(MemberAccountApi::class.java, scope).apiV1MemberMakerspacesAccountExportsCreate(scope.id, kotlinx.serialization.json.JsonObject(emptyMap())).requireBody())
+        export(api(MemberAccountApi::class.java, scope).apiV1MemberMakerspacesAccountExportsCreate(scope.id).requireBody())
     }
     override suspend fun export(scope: MemberScope, id: String): AccountExport = checked(scope) {
         export(api(MemberAccountApi::class.java, scope).apiV1MemberMakerspacesAccountExportsRetrieve2(uuid(id), scope.id).requireBody())
@@ -193,6 +224,7 @@ class GeneratedAccountGateway(
     private fun membership(value: MembershipAccount) = AccountMembership(value.status.value, value.renewalCancelledAt?.toString())
     private fun export(value: SubjectExport) = AccountExport(value.id.toString(), value.status.value, value.createdAt.toString(), value.expiresAt.toString(), value.failureDetail)
     companion object {
+        private const val MAX_GRANT_PAGES = 10
         fun invalid(message: String) = ApiFailure(0, message, "invalid_account_input", null)
         fun zip(bytes: ByteArray): Boolean = bytes.size >= 4 && bytes[0] == 80.toByte() && bytes[1] == 75.toByte() &&
             ((bytes[2] == 3.toByte() && bytes[3] == 4.toByte()) || (bytes[2] == 5.toByte() && bytes[3] == 6.toByte()) || (bytes[2] == 7.toByte() && bytes[3] == 8.toByte()))

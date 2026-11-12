@@ -4,10 +4,12 @@ import org.spaceworks.app.member.MemberScope
 
 /** Immutable display projections only. Generated contract types own every wire payload. */
 data class AccountSessionRow(val id: String, val kind: String, val current: Boolean, val createdAt: String, val lastUsedAt: String?, val expiresAt: String?)
-data class AccountGrantRow(val id: String, val platform: String, val status: String, val createdAt: String, val lastUsedAt: String)
+data class AccountGrantRow(val id: String, val platform: String, val status: String, val createdAt: String, val lastUsedAt: String, val authority: String = "member")
 data class AccountProviderRow(val provider: String, val createdAt: String)
 data class AccountMembership(val status: String, val renewalCancelledAt: String?)
 data class AccountSecurity(val available: Boolean, val enabled: Boolean, val required: Boolean)
+/** One settings enrolment in progress. The challenge is the credential: never saved or logged. */
+class AccountMfaSetup(val challenge: String, val secret: String, val qrDataUrl: String) { override fun toString() = "AccountMfaSetup(redacted)" }
 data class AccountPhone(val number: String, val verified: Boolean)
 data class AccountExport(val id: String, val status: String, val createdAt: String, val expiresAt: String, val failure: String)
 data class AccountRows<T>(val items: List<T>, val hasMore: Boolean)
@@ -27,6 +29,10 @@ interface AccountGateway {
     suspend fun security(scope: MemberScope?): AccountSecurity
     suspend fun disableMFA(scope: MemberScope?, password: String): AccountSecurity
     suspend fun regenerateRecovery(scope: MemberScope?, password: String): List<String>
+    /** `POST /auth/mfa` with the password, then `/auth/mfa/enroll` (no Authorization). */
+    suspend fun startMfa(scope: MemberScope?, password: String): AccountMfaSetup = throw UnsupportedOperationException()
+    /** `/auth/mfa/confirm` (no Authorization); installs the returned pair on this same grant. Returns recovery codes. */
+    suspend fun confirmMfa(scope: MemberScope?, challenge: String, code: String): List<String> = throw UnsupportedOperationException()
     suspend fun startPhone(scope: MemberScope?, phone: String)
     suspend fun confirmPhone(scope: MemberScope?, phone: String, code: String): AccountPhone
     suspend fun unlinkPhone(scope: MemberScope?): AccountPhone

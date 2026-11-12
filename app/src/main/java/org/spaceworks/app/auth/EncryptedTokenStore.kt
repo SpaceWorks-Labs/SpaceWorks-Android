@@ -98,6 +98,44 @@ class EncryptedTokenStore(private val file: SessionFile, private val cipher: Ses
         }
     }
 }
+/** The per-server remembered-device value, sealed like the session record. Kept across sign-outs. */
+class EncryptedDeviceTrustStore(private val file:SessionFile,private val cipher:SessionCipher):org.spaceworks.app.network.DeviceTrustStore {
+    private var loaded=false
+    private var cached:String?=null
+    @Synchronized override fun read():String? {
+        if(!loaded) {
+            cached=try {file.read()?.let {cipher.open(it).decodeToString().takeIf {value->value.isNotBlank() && value.length<=512}}}
+                catch(_:Exception){cipher.destroy();file.delete();null}
+            loaded=true
+        }
+        return cached
+    }
+    @Synchronized override fun write(value:String?) {
+        val accepted=value?.takeIf {it.isNotBlank() && it.length<=512 && it.none(Char::isISOControl)}
+        if(accepted==null){file.delete();cached=null;loaded=true;return}
+        if(accepted==read())return
+        file.write(cipher.seal(accepted.encodeToByteArray()));cached=accepted;loaded=true
+    }
+    companion object {
+        private val shared=java.util.concurrent.ConcurrentHashMap<String,EncryptedDeviceTrustStore>()
+        fun sharedAndroid(context:Context,origin:String):EncryptedDeviceTrustStore =
+            shared.computeIfAbsent(context.noBackupFilesDir.absolutePath+"\n"+origin) {
+                val key=MessageDigest.getInstance("SHA-256").digest(origin.encodeToByteArray()).joinToString("") {"%02x".format(it)}
+                EncryptedDeviceTrustStore(atomicSessionFile(File(context.noBackupFilesDir,"trust-$key.bin")),AndroidSessionCipher("spaceworks.trust.$key"))
+            }
+    }
+}
+internal fun atomicSessionFile(base:File):SessionFile {
+    val atomic=AtomicFile(base)
+    return object:SessionFile {
+        override fun read()=if (atomic.baseFile.exists()) atomic.readFully() else null
+        override fun write(bytes:ByteArray) {
+            val output=atomic.startWrite()
+            try {output.write(bytes);atomic.finishWrite(output)} catch(f:Exception) {atomic.failWrite(output);throw f}
+        }
+        override fun delete() {atomic.delete()}
+    }
+}
 class AndroidSessionCipher(private val alias:String):SessionCipher {
     private fun key():SecretKey {
         val store=KeyStore.getInstance("AndroidKeyStore").apply {load(null)}

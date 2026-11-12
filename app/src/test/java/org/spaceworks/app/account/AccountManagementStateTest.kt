@@ -115,6 +115,20 @@ class AccountManagementStateTest {
         assertNull(api.failure!!.localCopy); state.refresh(); assertEquals(fallback.detail, state.state.value.error)
     }
     private val maker = MemberScope(7, "workshop")
+    @Test fun settingsEnrolmentKeepsThisDeviceSignedInAndShowsRecoveryCodes() = runTest {
+        val api = FakeAccountGateway().apply { mfa = AccountSecurity(true, false, false) }
+        var ended = 0
+        val state = AccountManagementStateHolder(api, onSecurityEnded = { _, _ -> ended++ })
+        state.activateGlobal("account-51"); state.open(AccountPage.SECURITY)
+        state.startMfa(""); assertTrue(api.mfaStarts.isEmpty()); assertNotNull(state.state.value.error)
+        state.startMfa("secret"); assertEquals(listOf("secret"), api.mfaStarts); assertEquals("KEY", state.state.value.mfaSetup?.secret)
+        state.confirmMfa("12"); assertTrue(api.mfaConfirms.isEmpty())
+        state.confirmMfa("123456")
+        assertEquals(listOf("settings-challenge" to "123456"), api.mfaConfirms)
+        assertEquals(listOf("AAAA-1111"), state.state.value.recoveryCodes); assertNull(state.state.value.mfaSetup)
+        assertEquals(true, state.state.value.security?.enabled); assertEquals(0, ended)
+        state.acknowledgeRecoveryCodes(); assertTrue(state.state.value.recoveryCodes.isEmpty())
+    }
     private fun holder(api: FakeAccountGateway, signedOut: suspend () -> Unit = {}, changed: suspend () -> Unit = {},
         ended: suspend (List<String>, String?) -> Unit = { _, _ -> }, cooldown: AccountPhoneCooldown = AccountPhoneCooldown(), now: () -> Long = { 1_000L }) =
         AccountManagementStateHolder(api, signedOut, changed, ended, now, cooldown).also { it.activate(maker) }
@@ -288,6 +302,9 @@ private class FakeAccountGateway : AccountGateway {
     var validSession = true; var probes = 0; var disableCalls = 0; var phoneSends = 0; var downloads = 0
     var lastPhone: String? = null; var confirmedPhone: AccountPhone? = null; var unlinkedPhone = AccountPhone("", false)
     var mfa = AccountSecurity(true, true, false); var leaveStatus = "revoked"
+    var mfaStarts = mutableListOf<String>(); var mfaConfirms = mutableListOf<Pair<String, String>>()
+    override suspend fun startMfa(scope: MemberScope?, password: String): AccountMfaSetup { check(); mfaStarts += password; return AccountMfaSetup("settings-challenge", "KEY", "data:image/png;base64,AA==") }
+    override suspend fun confirmMfa(scope: MemberScope?, challenge: String, code: String): List<String> { check(); mfaConfirms += challenge to code; return listOf("AAAA-1111") }
     var sessionGate: CompletableDeferred<Unit>? = null
     val current = AccountSessionRow("opaque-current", "device", true, "2026-10-16T09:00:00Z", null, null)
     val other = AccountSessionRow("opaque-other", "web", false, "2026-10-16T09:00:00Z", null, null)

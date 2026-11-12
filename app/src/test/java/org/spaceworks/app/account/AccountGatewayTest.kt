@@ -24,7 +24,7 @@ class AccountGatewayTest {
                 for (header in listOf("Cookie", "Origin", "Referer")) assertNull(value.getHeader(header))
             }
             server.enqueue(response(fixture("mfa"))); assertTrue(gateway.security(null).enabled); check("/api/v1/auth/mfa")
-            server.enqueue(response(fixture("grants"))); assertEquals(2, gateway.grants(null).size); check("/api/v1/auth/device/grants")
+            server.enqueue(response(fixture("grants"))); assertEquals(2, gateway.grants(null).size); check("/api/v1/auth/device/grants?page=1")
             server.enqueue(response("[${fixture("provider")}]")); assertEquals(1, gateway.providers(null).size); check("/api/v1/auth/social/providers")
             server.enqueue(response("""{"detail":"Sent."}""")); gateway.startPhone(null, "+919876543210"); check("/api/v1/auth/phone/link/start")
             server.enqueue(response("""{"phone_e164":"+919876543210","verified":true}""")); assertTrue(gateway.confirmPhone(null, "+919876543210", "123456").verified); check("/api/v1/auth/phone/link/confirm")
@@ -49,7 +49,7 @@ class AccountGatewayTest {
     @Test fun wrongManualPasswordUsesGlobalIdentityProbeAndPreservesValidRotatedSession() = runBlocking {
         withGateway { gateway, server, tokens ->
             server.enqueue(response("{\"detail\":\"Wrong current password.\"}", 401))
-            val grant = Json.parseToJsonElement(fixture("grants")).jsonArray.first()
+            val grant = Json.parseToJsonElement(fixture("grants")).jsonObject["results"]!!.jsonArray.first()
             server.enqueue(response("""{"access":"rotated-access","refresh":"rotated-refresh","device_grant":$grant}"""))
             server.enqueue(response("{\"detail\":\"Wrong current password.\"}", 401)); server.enqueue(response(ME))
             try { gateway.changePassword(scope, "wrong", "replacement"); fail("Wrong password accepted") }
@@ -106,13 +106,42 @@ class AccountGatewayTest {
     }
     private fun body(request: RecordedRequest) = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
 
+    @Test fun deviceGrantListFollowsPagesOnThisServerOnly() = runBlocking {
+        withGateway { gateway, server, _ ->
+            val page = Json.parseToJsonElement(fixture("grants")).jsonObject
+            val first = JsonObject(page + ("next" to JsonPrimitive(server.url("/api/v1/auth/device/grants?page=2").toString())))
+            server.enqueue(response(first.toString())); server.enqueue(response(page.toString()))
+            val rows = gateway.grants(scope)
+            assertEquals(4, rows.size); assertEquals(listOf("member", "staff", "member", "staff"), rows.map { it.authority })
+            request(server, "GET", "/api/v1/auth/device/grants?page=1"); request(server, "GET", "/api/v1/auth/device/grants?page=2")
+            server.enqueue(response(JsonObject(page + ("next" to JsonPrimitive("https://elsewhere.invalid/api/v1/auth/device/grants?page=2"))).toString()))
+            try { gateway.grants(scope); fail("Foreign next page accepted") } catch (failure: ApiFailure) { assertEquals("invalid_account_input", failure.code) }
+        }
+    }
+    @Test fun settingsMfaEnrolmentStartsWithPasswordThenConfirmsWithoutAuthorizationOnTheSameGrant() = runBlocking {
+        withGateway { gateway, server, tokens ->
+            val challenge = "settings-challenge-0000000000"
+            server.enqueue(response("""{"mfa_required":false,"enrollment_required":true,"challenge":"$challenge","expires_in":600,"factors":[]}"""))
+            server.enqueue(response("""{"secret":"KEY","provisioning_uri":"otpauth://x","qr_data_url":"data:image/png;base64,AA=="}"""))
+            val setup = gateway.startMfa(scope, "pass word")
+            assertEquals("KEY", setup.secret); assertEquals(challenge, setup.challenge)
+            val start = request(server, "POST", "/api/v1/auth/mfa"); assertEquals("pass word", body(start)["password"]!!.jsonPrimitive.content)
+            val enroll = request(server, "POST", "/api/v1/auth/mfa/enroll", authenticated = false); assertEquals(challenge, body(enroll)["challenge"]!!.jsonPrimitive.content)
+            val epoch = tokens.snapshot().epoch
+            server.enqueue(response("""{"access":"new-access","refresh":"new-refresh","surface":"member","user":${org.spaceworks.app.testsupport.Payloads.user()},"device_grant":{"id":"$grantID"},"recovery_codes":["AAAA-1111","BBBB-2222"]}"""))
+            assertEquals(listOf("AAAA-1111", "BBBB-2222"), gateway.confirmMfa(scope, challenge, "123456"))
+            val confirm = request(server, "POST", "/api/v1/auth/mfa/confirm", authenticated = false)
+            assertEquals("123456", body(confirm)["code"]!!.jsonPrimitive.content)
+            assertEquals(TokenPair("new-access", "new-refresh"), tokens.read()); assertEquals(epoch, tokens.snapshot().epoch)
+        }
+    }
     @Test fun everyGeneratedAccountOperationUsesItsExactPublishedRouteBodyAndSuccessStatus() = runBlocking {
         withGateway { gateway, server, _ ->
             server.enqueue(response(fixture("sessions")))
             val sessions = gateway.sessions(scope); assertTrue(sessions.items.first().current)
             request(server, "GET", "/api/v1/member/makerspaces/7/account/sessions")
             server.enqueue(response(fixture("grants"))); assertEquals(2, gateway.grants(scope).size)
-            request(server, "GET", "/api/v1/auth/device/grants")
+            request(server, "GET", "/api/v1/auth/device/grants?page=1")
             server.enqueue(MockResponse().setResponseCode(204)); gateway.revokeSession(scope, "opaque-session")
             request(server, "DELETE", "/api/v1/member/makerspaces/7/account/sessions/opaque-session")
             server.enqueue(MockResponse().setResponseCode(204)); gateway.revokeGrant(scope, grantID)
@@ -143,7 +172,7 @@ class AccountGatewayTest {
             server.enqueue(response("""{"count":1,"next":null,"previous":null,"results":[${fixture("export")}]}""")); assertEquals(jobID, gateway.exports(scope).items.single().id)
             request(server, "GET", "/api/v1/member/makerspaces/7/account/exports")
             server.enqueue(response(fixture("export").replace("available", "pending"), 202)); assertEquals("pending", gateway.requestExport(scope).status)
-            assertEquals(JsonObject(emptyMap()), body(request(server, "POST", "/api/v1/member/makerspaces/7/account/exports")))
+            assertEquals("", request(server, "POST", "/api/v1/member/makerspaces/7/account/exports").body.readUtf8())
             server.enqueue(response(fixture("export"))); assertEquals("available", gateway.export(scope, jobID).status)
             request(server, "GET", "/api/v1/member/makerspaces/7/account/exports/$jobID")
             val token = "fresh-one-use-token"
@@ -168,7 +197,7 @@ class AccountGatewayTest {
     @Test fun wrongManagementPasswordRotatesOnceThenValidIdentityPreservesCredentials() = runBlocking {
         withGateway { gateway, server, tokens ->
             server.enqueue(response("""{"detail":"Wrong password."}""", 401))
-            val deviceGrant = Json.parseToJsonElement(fixture("grants")).jsonArray.first()
+            val deviceGrant = Json.parseToJsonElement(fixture("grants")).jsonObject["results"]!!.jsonArray.first()
             server.enqueue(response("""{"access":"rotated-access","refresh":"rotated-refresh","device_grant":$deviceGrant}"""))
             server.enqueue(response("""{"detail":"Wrong password."}""", 401))
             server.enqueue(response(ME))
@@ -274,5 +303,5 @@ class AccountGatewayTest {
             assertEquals(0, server.requestCount)
         }
     }
-    private companion object { const val ME = """{"session_authority":"member","id":1,"username":"meera","email":"meera@example.invalid","display_name":"Meera Nair","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[]}""" }
+    private companion object { const val ME = """{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"meera","email":"meera@example.invalid","display_name":"Meera Nair","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[]}""" }
 }

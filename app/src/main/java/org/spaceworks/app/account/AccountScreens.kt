@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
@@ -171,7 +172,24 @@ private data class AccountConfirmation(val title: String, val detail: String, va
                             Text(stringResource(if (security.enabled) R.string.account_mfa_enabled else R.string.account_mfa_disabled), style = MaterialTheme.typography.titleMedium)
                             if (security.required) Text(stringResource(R.string.account_mfa_required))
                             if (!security.available && !security.enabled) Text(stringResource(R.string.account_mfa_unavailable))
-                            if (!security.enabled && security.available) Text(stringResource(R.string.account_mfa_web))
+                        }
+                        if (s.recoveryCodes.isNotEmpty()) {
+                            Text(stringResource(R.string.account_mfa_save_codes), style = MaterialTheme.typography.titleMedium)
+                            androidx.compose.foundation.text.selection.SelectionContainer { Column { s.recoveryCodes.forEach { Text(it) } } }
+                            BrandButton(stringResource(R.string.account_mfa_codes_saved), { holder.acknowledgeRecoveryCodes() }, enabled)
+                        } else if (!security.enabled && security.available) s.mfaSetup?.let { setup ->
+                            // Settings enrolment: scan, then confirm with a code. Tokens are re-issued on this grant.
+                            val bitmap = remember(setup.qrDataUrl) { try { val bytes = android.util.Base64.decode(setup.qrDataUrl.substringAfter(','), android.util.Base64.DEFAULT); android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } catch (_: Exception) { null } }
+                            bitmap?.let { androidx.compose.foundation.Image(it.asImageBitmap(), stringResource(R.string.account_mfa_scan), Modifier.sizeIn(maxWidth = 224.dp, maxHeight = 224.dp)) }
+                            androidx.compose.foundation.text.selection.SelectionContainer { Text(stringResource(R.string.account_mfa_setup_key, setup.secret)) }
+                            var code by remember(setup) { mutableStateOf("") }
+                            BrandField(code, { code = it.filter { c -> c in '0'..'9' }.take(6) }, stringResource(R.string.account_mfa_code), Modifier.testTag("account-mfa-code"), enabled, role = org.spaceworks.app.ui.FieldRole.CODE)
+                            BrandButton(stringResource(R.string.account_mfa_confirm), { work.launch { holder.confirmMfa(code) } }, enabled && code.length == 6, Modifier.testTag("account-mfa-confirm"))
+                            BrandTextButton(stringResource(R.string.account_mfa_cancel), { holder.cancelMfa() }, enabled)
+                        } ?: run {
+                            Text(stringResource(R.string.account_mfa_setup_intro))
+                            BrandField(password, { password = it.take(1024) }, stringResource(R.string.account_password), Modifier.testTag("account-mfa-password"), enabled, secret = true)
+                            BrandButton(stringResource(R.string.account_mfa_set_up), { val value = password; password = ""; work.launch { holder.startMfa(value) } }, enabled && password.isNotEmpty(), Modifier.testTag("account-mfa-start"))
                         }
                         if (security.enabled) {
                             BrandField(password, { password = it.take(1024) }, stringResource(R.string.account_password), Modifier.testTag("account-current-password"), enabled, secret = true)
@@ -323,6 +341,8 @@ fun android.content.res.Resources.accountText(copy: AccountCopy): String = getSt
     AccountCopy.RECOVERY_CHANGED -> R.string.account_message_recovery_changed
     AccountCopy.MFA_STILL_ENABLED -> R.string.account_message_mfa_still_enabled
     AccountCopy.MFA_CHANGED -> R.string.account_message_mfa_changed
+    AccountCopy.MFA_ENABLED -> R.string.account_message_mfa_enabled
+    AccountCopy.MFA_CODE_REQUIRED -> R.string.account_message_mfa_code_required
     AccountCopy.PASSWORD_REQUIRED -> R.string.account_message_password_required
     AccountCopy.PASSWORD_NEW_REQUIRED -> R.string.account_message_password_new_required
     AccountCopy.PASSWORD_CONFIRMATION -> R.string.account_message_password_confirmation

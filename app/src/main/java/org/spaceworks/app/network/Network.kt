@@ -11,6 +11,7 @@ import org.openapitools.client.infrastructure.BigDecimalAdapter
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import org.spaceworks.generated.api.AuthApi
@@ -77,7 +78,11 @@ class RefreshCoordinator(private val store:TokenStore,private val rotate:suspend
             try {
                 val replacement=rotate(current.refresh)
                 if(store.rotateIfCurrent(expected,replacement))replacement else null
-            }catch(failure:Exception){store.rotateIfCurrent(expected,null);throw failure}
+            }catch(failure:Exception){
+                // 426: the server rotated nothing; keep the pair so it resumes after the update.
+                if(!(failure is ApiFailure && failure.updateRequired))store.rotateIfCurrent(expected,null)
+                throw failure
+            }
         }
     }
 }
@@ -108,9 +113,56 @@ class SessionAuthenticator(private val coordinator:RefreshCoordinator):Authentic
         if(response.priorResponse!=null)return null
         val epoch=response.request.tag(SessionEpochTag::class.java)?.epoch?:return null
         val rejected=response.request.header("Authorization")?.removePrefix("Bearer ")?:return null
-        val pair=try {kotlinx.coroutines.runBlocking {coordinator.refresh(rejected,epoch)}}catch(_:Exception){return null}
+        val pair=try {kotlinx.coroutines.runBlocking {coordinator.refresh(rejected,epoch)}}catch(failure:Exception){
+            if(failure is ApiFailure && failure.updateRequired)response.request.tag(RefreshRefusal::class.java)?.failure=failure
+            return null
+        }
         return pair?.let {response.request.newBuilder().header("Authorization","Bearer ${it.access}").build()}
     }
+}
+/** Local request tag: the refresh refusal seen while answering this call's 401. */
+private class RefreshRefusal { @Volatile var failure:ApiFailure?=null }
+/**
+ * A 426 on refresh means this app is below the deployment minimum and nothing rotated. The
+ * caller would otherwise only see the original 401; surface the 426 instead and tell the owner.
+ */
+private class UpdateRequiredResponse(private val onUpdateRequired:(ApiFailure)->Unit):Interceptor {
+    override fun intercept(chain:Interceptor.Chain):Response {
+        val refusal=RefreshRefusal()
+        val response=chain.proceed(chain.request().newBuilder().tag(RefreshRefusal::class.java,refusal).build())
+        val failure=refusal.failure?.takeIf {response.code==401}?:return response
+        onUpdateRequired(failure)
+        val body=buildJsonObject {put("detail",failure.detail);put("code",UPDATE_REQUIRED_CODE);failure.minimumVersion?.let {put("minimum_version",it)}}
+        response.close()
+        return response.newBuilder().code(426).message("Upgrade Required")
+            .body(body.toString().toResponseBody("application/json".toMediaType())).build()
+    }
+}
+const val UPDATE_REQUIRED_CODE="native_app_update_required"
+/**
+ * Sends the stored remembered-device value back on sign-in routes only (PRD §7 "Remembered
+ * devices"). The header is not declared in the OpenAPI schema, so it is a transport concern here.
+ */
+private class DeviceTrustHeader(private val trust:DeviceTrustStore):Interceptor {
+    override fun intercept(chain:Interceptor.Chain):Response {
+        val request=chain.request()
+        val path=request.url.encodedPath
+        val signIn=path in SIGN_IN_PATHS || path.startsWith("/api/v1/auth/social/oidc/")
+        val value=if(signIn)trust.read() else null
+        return chain.proceed(request.newBuilder().removeHeader(DEVICE_TRUST_HEADER).apply {value?.let {header(DEVICE_TRUST_HEADER,it)}}.build())
+    }
+    companion object {
+        val SIGN_IN_PATHS=setOf("/api/v1/auth/device/login","/api/v1/auth/mfa/verify","/api/v1/auth/mfa/confirm",
+            "/api/v1/auth/social/google","/api/v1/auth/phone/login/confirm","/api/v1/auth/device/staff-grant")
+    }
+}
+const val DEVICE_TRUST_HEADER="X-Device-Trust"
+/** The remembered-device value for one server. Survives sign-out; never logged. */
+interface DeviceTrustStore { fun read():String?; fun write(value:String?) }
+class MemoryDeviceTrustStore:DeviceTrustStore {
+    @Volatile private var value:String?=null
+    override fun read()=value
+    override fun write(value:String?){this.value=value}
 }
 
 // OkHttp retries selected HTTP responses independently of retryOnConnectionFailure. Hide those
@@ -138,7 +190,10 @@ private class RestoreServiceResponse : Interceptor {
     }
 }
 data class ApiFailure(val status: Int, val detail: String, val code: String?, val retryAfterSeconds: Long?,
-    val localCopy: org.spaceworks.app.platform.MobileCopyKey? = null) : Exception(detail)
+    val localCopy: org.spaceworks.app.platform.MobileCopyKey? = null, val minimumVersion: String? = null) : Exception(detail) {
+    /** 426 `native_app_update_required`: this app is older than the deployment minimum. */
+    val updateRequired get() = status == 426 || code == UPDATE_REQUIRED_CODE
+}
 object Errors {
     private val json = Json { ignoreUnknownKeys = true }
     fun map(status: Int, body: String?, retryAfter: String? = null, now: Instant = Instant.now()): ApiFailure {
@@ -173,7 +228,8 @@ object Errors {
         val seconds = parseRetryAfterDeltaSeconds(retryAfter) ?: try {
             retryAfter?.let { (ZonedDateTime.parse(it, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().epochSecond - now.epochSecond).coerceAtLeast(0) }
         } catch (_: Exception) { null }
-        return ApiFailure(status,detail,code,seconds,localCopy)
+        val minimum = (envelope?.get("minimum_version") as? JsonPrimitive)?.contentOrNull
+        return ApiFailure(status,detail,code,seconds,localCopy,minimum)
     }
 }
 object Pagination {
@@ -183,9 +239,18 @@ object Pagination {
         next
     }
 }
-class ApiSession(val server: HttpUrl, private val store: TokenStore = MemoryTokenStore(), makerspace: () -> String? = { null }) {
+class ApiSession(val server: HttpUrl, private val store: TokenStore = MemoryTokenStore(),
+    /** The app's own x.y.z version, sent on sign-in, refresh and staff step-up. */
+    val appVersion: String? = null, val deviceTrust: DeviceTrustStore = MemoryDeviceTrustStore(), makerspace: () -> String? = { null }) {
+    /** Called when a refresh is refused with 426; the stored pair is kept. */
+    @Volatile var onUpdateRequired: (ApiFailure) -> Unit = {}
     /** Non-secret installation identity for generated operations with several awaited calls. */
     val installationEpoch:Long get()=store.snapshot().epoch
+    /** Settings MFA enrolment re-issues tokens on the same grant: rotate in place, same installation only. */
+    fun replaceCurrentPair(expectedEpoch:Long,pair:TokenPair):Boolean {
+        val current=store.snapshot()
+        return current.epoch==expectedEpoch && store.rotateIfCurrent(current,pair)
+    }
     @Volatile private var identityEpoch:(()->Long?)?=null
     /** Controller-local identity proof; authentication bootstrap uses its explicit auth services. */
     fun bindIdentityEpoch(expected:()->Long?) {
@@ -209,7 +274,7 @@ class ApiSession(val server: HttpUrl, private val store: TokenStore = MemoryToke
     private val baseClient = OkHttpClient.Builder().cookieJar(CookieJar.NO_COOKIES)
         .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
         .callTimeout(45,java.util.concurrent.TimeUnit.SECONDS)
-        .addInterceptor(RestoreServiceResponse()).addNetworkInterceptor(PreventServiceReplay()).build()
+        .addInterceptor(RestoreServiceResponse()).addInterceptor(DeviceTrustHeader(deviceTrust)).addNetworkInterceptor(PreventServiceReplay()).build()
     private fun authenticatedCalls(client:OkHttpClient,onCall:(Call)->Unit={},expectedEpoch:Long?=null):Call.Factory=Call.Factory {request->
         // Capture before enqueue: a queued old mutation must never first-send as a newly signed-in account.
         val tagged=request.newBuilder().tag(SessionEpochTag::class.java,SessionEpochTag(expectedEpoch?:store.snapshot().epoch)).build()
@@ -253,11 +318,11 @@ class ApiSession(val server: HttpUrl, private val store: TokenStore = MemoryToke
     val socialPublic = retrofit(baseClient).create(SocialAuthApi::class.java)
     private val refreshApi = devicePublic
     val coordinator = RefreshCoordinator(store) { refresh ->
-        val response = refreshApi.apiV1AuthDeviceRefreshCreate(DeviceRefresh(refresh))
+        val response = refreshApi.apiV1AuthDeviceRefreshCreate(DeviceRefresh(refresh, appVersion))
         val result = response.body() ?: throw Errors.map(response.code(),response.errorBody()?.string(),response.headers()["Retry-After"])
         TokenPair(result.access,result.refresh)
     }
-    val client: OkHttpClient = baseClient.newBuilder().dispatcher(Dispatcher()).addInterceptor(RequestHeaders(store,makerspace))
+    val client: OkHttpClient = baseClient.newBuilder().dispatcher(Dispatcher()).also {it.interceptors().add(0,UpdateRequiredResponse {failure->onUpdateRequired(failure)})}.addInterceptor(RequestHeaders(store,makerspace))
         .authenticator(SessionAuthenticator(coordinator)).addNetworkInterceptor(SessionEpochGuard(store)).build()
     val auth = retrofit(client,true).create(AuthApi::class.java)
     val deviceAuthenticated = retrofit(client,true).create(DeviceAuthApi::class.java)

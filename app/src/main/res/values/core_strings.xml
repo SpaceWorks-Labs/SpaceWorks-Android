@@ -134,4 +134,7 @@
     <string name="core_your_code_expired_send_a_new_code">"Your code expired. Send a new code."</string>
     <string name="core_signed_out_on_every_device_and_browser">"Signed out on every device and browser."</string>
     <string name="core_this_sign_in_provider_is_unavailable_try_again">"This sign-in provider is unavailable. Try again."</string>
+    <string name="core_we_sent_a_new_code">"We sent a new code."</string>
+    <string name="core_no_more_codes_can_be_sent_sign_in_again">"No more codes can be sent. Sign in again."</string>
+    <string name="core_use_3_30_letters_numbers_dots_underscores_or_hyphens">"Use 3–30 letters, numbers, dots, underscores or hyphens; start and end with a letter or number."</string>
 </resources>

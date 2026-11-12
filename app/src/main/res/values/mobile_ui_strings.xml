@@ -917,4 +917,20 @@
     <string name="mobile_restore_account">"Restore account"</string>
     <string name="mobile_account_restored">"Account restored"</string>
     <string name="mobile_restored_sign_in_again">"Sign in with your new password. Memberships, sessions and notifications stay off until your makerspace restores them."</string>
+    <string name="mobile_download_from_github_releases">"Download from GitHub Releases"</string>
+    <string name="mobile_check_your_email">"Check your email"</string>
+    <string name="mobile_we_don_t_recognise_this_device_enter_the_six_digit_code_we_emailed_you">"We don't recognise this device or network. Enter the six-digit code we emailed you."</string>
+    <string name="mobile_email_code">"Email code"</string>
+    <string name="mobile_send_a_new_code">"Send a new code"</string>
+    <string name="mobile_choose_your_username">"Choose your username"</string>
+    <string name="mobile_your_username_is_public_you_need_one_to_request_book_and_register">"Your username is public. You need one to request, book and register."</string>
+    <string name="mobile_username">"Username"</string>
+    <string name="mobile_checking">"Checking…"</string>
+    <string name="mobile_username_available">"Available"</string>
+    <string name="mobile_username_taken">"That username is taken."</string>
+    <string name="mobile_username_taken_try_value">"That username is taken. Try %1$s."</string>
+    <string name="mobile_use_3_30_letters_numbers_dots_underscores_or_hyphens">"Use 3–30 letters, numbers, dots, underscores or hyphens; start and end with a letter or number."</string>
+    <string name="mobile_use_value">"Use %1$s"</string>
+    <string name="mobile_saving">"Saving…"</string>
+    <string name="mobile_save_username">"Save username"</string>
 </resources>

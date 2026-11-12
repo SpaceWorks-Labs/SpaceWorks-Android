@@ -83,11 +83,10 @@ import org.spaceworks.app.platform.GoogleIdentity
     BackHandler(state.phone!=null && state.mfa==null) {if(!state.busy)holder.closePhone()}
     when {
         state.gate==AuthGate.UPDATE_REQUIRED -> AuthLayout(copyText(UiStrings.MOBILE_UPDATE_REQUIRED),copyText(UiStrings.MOBILE_THIS_VERSION_IS_NO_LONGER_SUPPORTED_BY_YOUR_SERVER)) {
-            BrandButton(copyText(UiStrings.MOBILE_OPEN_GOOGLE_PLAY),{
-                val id=context.packageName
-                runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id=$id")))}
-                    .recoverCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/apps/details?id=$id")))}
-            },!state.busy)
+            // 0.12.0 ships the apps through GitHub Releases only; there is no store listing.
+            BrandButton(copyText(UiStrings.MOBILE_DOWNLOAD_FROM_GITHUB_RELEASES),{
+                runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(AppReleases.LATEST)))}
+            },!state.busy,Modifier.testTag("downloadUpdate"))
             BrandTextButton(copyText(UiStrings.MOBILE_TRY_AGAIN),{scope.launch {holder.initialize()}},!state.busy)
             onChangeServer?.let {BrandTextButton(copyText(UiStrings.MOBILE_CHANGE_SERVER),it,!state.busy)}
         }
@@ -108,6 +107,17 @@ import org.spaceworks.app.platform.GoogleIdentity
             }
             BrandError(state.error)
             BrandButton(copyText(UiStrings.MOBILE_CONTINUE),{launchAuth {outcome->holder.finishMfaWithOutcome(outcome)}},!state.busy && acknowledged)
+        }
+        state.mfa!=null && state.riskChallenge -> AuthLayout(copyText(UiStrings.MOBILE_CHECK_YOUR_EMAIL),copyText(UiStrings.MOBILE_WE_DON_T_RECOGNISE_THIS_DEVICE_ENTER_THE_SIX_DIGIT_CODE_WE_EMAILED_YOU)) {
+            BrandField(code,{code=it.filter {c->c in '0'..'9'}.take(6)},copyText(UiStrings.MOBILE_EMAIL_CODE),Modifier.testTag("emailCode"),!state.busy,role=FieldRole.ONE_TIME_CODE,
+                onDone={if(code.length==6 && !state.busy){focus.clearFocus();keyboard?.hide();launchAuth {outcome->holder.verifyWithOutcome(code,outcome);code=""}}})
+            BrandButton(if(state.busy)copyText(UiStrings.MOBILE_VERIFYING) else copyText(UiStrings.MOBILE_VERIFY),{
+                focus.clearFocus();keyboard?.hide();launchAuth {outcome->holder.verifyWithOutcome(code,outcome);code=""}
+            },!state.busy && code.length==6,Modifier.testTag("verifyEmailCode"))
+            BrandTextButton(copyText(UiStrings.MOBILE_SEND_A_NEW_CODE),{scope.launch {holder.resendLoginCode()}},!state.busy && state.loginCodeResendsLeft!=0,Modifier.testTag("resendEmailCode"))
+            state.notice?.let {Text(it,Modifier.semantics {liveRegion=LiveRegionMode.Polite})}
+            BrandError(state.error)
+            BrandTextButton(copyText(UiStrings.MOBILE_BACK_TO_SIGN_IN),{scope.launch {holder.cancelMfa()}},!state.busy)
         }
         state.mfa!=null -> {
             val mfa=requireNotNull(state.mfa)
@@ -137,7 +147,7 @@ import org.spaceworks.app.platform.GoogleIdentity
                         focus.clearFocus();keyboard?.hide();launchAuth {outcome->holder.verifyWithOutcome(code,outcome);code=""}
                     },!state.busy && if(recoveryEntry)code.trim().length in 6..64 else code.length==6)
                 }
-                if(!enrollment)BrandTextButton(if(recoveryEntry)copyText(UiStrings.MOBILE_USE_AUTHENTICATOR_INSTEAD) else copyText(UiStrings.MOBILE_USE_A_RECOVERY_CODE),{recoveryEntry=!recoveryEntry;code=""},!state.busy)
+                if(!enrollment && (mfa.factors.isNullOrEmpty() || org.spaceworks.generated.model.FactorsEnum.recovery in mfa.factors.orEmpty()))BrandTextButton(if(recoveryEntry)copyText(UiStrings.MOBILE_USE_AUTHENTICATOR_INSTEAD) else copyText(UiStrings.MOBILE_USE_A_RECOVERY_CODE),{recoveryEntry=!recoveryEntry;code=""},!state.busy)
                 if(bundle.demo)Text(copyText(UiStrings.MOBILE_DEMO_CODE_123456),style=MaterialTheme.typography.bodySmall)
                 BrandError(state.error)
                 BrandTextButton(copyText(UiStrings.MOBILE_BACK_TO_SIGN_IN),{scope.launch {holder.cancelMfa()}},!state.busy)

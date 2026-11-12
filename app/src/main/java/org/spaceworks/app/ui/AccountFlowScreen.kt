@@ -50,6 +50,7 @@ import org.spaceworks.app.auth.*
             AccountRoute.SIGN_UP -> {
                 BrandField(name,{name=it.take(200)},copyText(UiStrings.MOBILE_NAME),enabled=!state.busy,role=FieldRole.NAME)
                 BrandField(email,{email=it.take(254)},copyText(UiStrings.MOBILE_EMAIL),Modifier.testTag("accountEmail"),!state.busy,role=FieldRole.EMAIL)
+                SignUpUsername(holder.handle,!state.busy)
                 BrandTextButton(copyText(UiStrings.MOBILE_ADD_PHONE_NUMBER_OPTIONAL),{showPhone=!showPhone},!state.busy)
                 if(showPhone)BrandField(phone,{phone=it.take(32)},copyText(UiStrings.MOBILE_PHONE_NUMBER_OPTIONAL),enabled=!state.busy,role=FieldRole.PHONE)
                 BrandField(password,{password=it.take(128)},copyText(UiStrings.MOBILE_PASSWORD),Modifier.testTag("accountPassword"),!state.busy,secret=true,role=FieldRole.NEW_PASSWORD)
@@ -103,4 +104,21 @@ import org.spaceworks.app.auth.*
         if(demo)Text(copyText(UiStrings.MOBILE_DEMO_ONLY_NO_EMAIL_IS_SENT_VERIFICATION_CODE_123456),style=MaterialTheme.typography.bodySmall)
         if(state.route!=AccountRoute.SIGNUP_ACK && state.route!=AccountRoute.RESET_SUCCESS && state.route!=AccountRoute.RESTORE_SUCCESS)BrandTextButton(if(state.route==AccountRoute.VERIFY_EMAIL)copyText(UiStrings.MOBILE_BACK) else copyText(UiStrings.MOBILE_BACK_TO_SIGN_IN),holder::back,!state.busy)
     }
+}
+
+/** Optional username at sign-up with a live availability check; the server suggests one when taken. */
+@Composable private fun SignUpUsername(handles:org.spaceworks.app.auth.HandleStateHolder,enabled:Boolean) {
+    val copyText=rememberMobileText()
+    val state by handles.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.handle) {
+        if(state.handle.isNotEmpty() && state.availability==org.spaceworks.app.auth.HandleAvailability.UNCHECKED){kotlinx.coroutines.delay(400);handles.check()}
+    }
+    val problem=when(state.availability) {
+        org.spaceworks.app.auth.HandleAvailability.TAKEN -> state.suggestion?.takeIf {it!=state.handle}?.let {copyText(UiStrings.MOBILE_USERNAME_TAKEN_TRY_VALUE,it)} ?: copyText(UiStrings.MOBILE_USERNAME_TAKEN)
+        org.spaceworks.app.auth.HandleAvailability.INVALID -> copyText(UiStrings.MOBILE_USE_3_30_LETTERS_NUMBERS_DOTS_UNDERSCORES_OR_HYPHENS)
+        else -> null
+    }
+    BrandField(state.handle,handles::edit,copyText(UiStrings.MOBILE_USERNAME),Modifier.testTag("signUpHandle"),enabled,errorMessage=problem)
+    if(state.availability==org.spaceworks.app.auth.HandleAvailability.AVAILABLE && state.handle.isNotEmpty())
+        Text(copyText(UiStrings.MOBILE_USERNAME_AVAILABLE),style=MaterialTheme.typography.bodySmall)
 }

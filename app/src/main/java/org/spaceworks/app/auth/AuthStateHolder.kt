@@ -38,7 +38,9 @@ data class AuthState(val busy:Boolean=false,val initialized:Boolean=false,val co
     val user:AuthUserPayload?=null,val selectedId:Int?=null,val mfa:MFAChallengeResponse?=null,
     val enrollment:MFAEnrollment?=null,val recoveryCodes:List<String> = emptyList(),
     val error:String?=null,val notice:String?=null,val retryAtMillis:Long=0,
-    val mfaExpiresAtMillis:Long=0,val expiredMfa:Boolean=false,val gate:AuthGate?=null,val phone:PhoneSignIn?=null) {
+    val mfaExpiresAtMillis:Long=0,val expiredMfa:Boolean=false,val gate:AuthGate?=null,val phone:PhoneSignIn?=null,
+    /** Emailed sign-in codes still allowed for the current unusual-sign-in challenge (server count). */
+    val loginCodeResendsLeft:Int?=null) {
     val memberships get()=user?.makerspaces.orEmpty().filter {it.source==AuthMembershipSourceEnum.membership}
     val selected get()=memberships.firstOrNull {it.id==selectedId}
     /** Native deployments publish their enabled methods; legacy servers keep the browser-era flags. */
@@ -46,8 +48,10 @@ data class AuthState(val busy:Boolean=false,val initialized:Boolean=false,val co
     val passwordEnabled get()=native?.providers?.password ?: ((config?.passwordLogin?.get("enabled") as? JsonPrimitive)?.booleanOrNull != false &&
         (config?.memberAccounts?.get("enabled") as? JsonPrimitive)?.booleanOrNull != false)
     val phoneEnabled get()=native?.providers?.phone==true
-    /** Staff tools need a native staff grant; membership actions alone never grant them. */
-    val staffAllowed get()=user?.sessionAuthority=="native_staff"
+    /** An unusual sign-in: a six-digit code was emailed (`purpose: risk`, factor `email_code`). */
+    val riskChallenge get()=mfa?.purpose==MFAChallengeResponsePurposeEnum.risk
+    /** The account has no username yet: show the blocking "Choose your username" step. */
+    val handleRequired get()=user?.handleRequired==true
     val selfRegistrationEnabled get()=config!=null && (config?.memberAccounts?.get("enabled") as? JsonPrimitive)?.booleanOrNull!=false &&
         (config?.selfRegistration?.get("enabled") as? JsonPrimitive)?.booleanOrNull!=false
     val googleClientId get():String? {
@@ -61,7 +65,9 @@ data class AuthState(val busy:Boolean=false,val initialized:Boolean=false,val co
 class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     private val readSelection:()->Int?={null},private val saveSelection:(Int?)->Unit={},
     private val now:()->Long=System::currentTimeMillis,private val onSessionEnded:()->Unit={},
-    private val onScopeChanged:()->Unit={},private val text:MobileText=MobileText.ENGLISH,private val appVersion:String?=null) {
+    private val onScopeChanged:()->Unit={},private val text:MobileText=MobileText.ENGLISH,private val appVersion:String?=null,
+    /** Whether a valid staff grant covers this makerspace (the staff step-up holder owns it). */
+    private val staffGrantFor:(Int)->Boolean={false}) {
     constructor(api:AuthGateway,tokens:TokenStore,readSelection:()->Int?={null},saveSelection:(Int?)->Unit={},now:()->Long=System::currentTimeMillis,onSessionEnded:()->Unit)
         :this(api,tokens,readSelection,saveSelection,now,onSessionEnded,{},MobileText.ENGLISH)
 
@@ -111,11 +117,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
             is DeviceLoginResult.DeviceTokenResponseValue -> {
                 acceptPair(TokenPair(result.value.access,result.value.refresh))
             }
-            is DeviceLoginResult.MFAChallengeResponseValue -> {
-                ensure(result.value.mfaRequired,text(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN))
-                challengeExpiresAt=now()+result.value.expiresIn.coerceAtLeast(0)*1000L
-                mutable.value=state.value.copy(mfa=result.value,enrollment=null,error=null,mfaExpiresAtMillis=challengeExpiresAt,expiredMfa=false)
-            }
+            is DeviceLoginResult.MFAChallengeResponseValue -> startChallenge(result.value)
         }
     }
     suspend fun googleSignIn(credential:suspend(String,String)->String)=googleSignInWithOutcome(credential,null)
@@ -125,8 +127,23 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         ensure(api.nativeSocialReady,text(CoreStrings.CORE_DEVICE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_BUILD_CONTACT_YOUR))
         val result=api.google(client,credential)
         ensureOperationCurrent()
-        ensure(!result.refresh.isNullOrBlank() && validGrant(result.deviceGrant),text(CoreStrings.CORE_THIS_SERVER_DID_NOT_RETURN_A_DEVICE_SESSION_CONTACT_YOUR_MAK))
-        acceptPair(TokenPair(result.access,requireNotNull(result.refresh)))
+        acceptSocial(result)
+    }
+    /** Social sign-in returns tokens, or an MFA challenge for people MFA is mandatory for. */
+    private suspend fun acceptSocial(result:SocialLoginResult) {
+        when(result) {
+            is SocialLoginResult.MFAChallengeResponseValue -> startChallenge(result.value)
+            is SocialLoginResult.SocialLoginResponseValue -> {
+                val tokens=result.value
+                ensure(!tokens.refresh.isNullOrBlank() && validGrant(tokens.deviceGrant),text(CoreStrings.CORE_THIS_SERVER_DID_NOT_RETURN_A_DEVICE_SESSION_CONTACT_YOUR_MAK))
+                acceptPair(TokenPair(tokens.access,requireNotNull(tokens.refresh)))
+            }
+        }
+    }
+    private fun startChallenge(challenge:MFAChallengeResponse) {
+        ensure(challenge.mfaRequired || challenge.enrollmentRequired,text(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN))
+        challengeExpiresAt=now()+challenge.expiresIn.coerceAtLeast(0)*1000L
+        mutable.value=state.value.copy(phone=null,mfa=challenge,enrollment=null,error=null,mfaExpiresAtMillis=challengeExpiresAt,expiredMfa=false,loginCodeResendsLeft=null)
     }
     private var phoneChallenge:PhoneChallenge?=null
     fun openPhone() {if(!state.value.busy && state.value.phoneEnabled){phoneChallenge=null;mutable.value=state.value.copy(phone=PhoneSignIn(),error=null,notice=null,gate=null)}}
@@ -166,11 +183,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
                 mutable.value=state.value.copy(phone=null)
                 acceptPair(TokenPair(result.value.access,requireNotNull(result.value.refresh)))
             }
-            is PhoneLoginResult.MFAChallengeResponseValue -> {
-                ensure(result.value.mfaRequired,text(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN))
-                challengeExpiresAt=now()+result.value.expiresIn.coerceAtLeast(0)*1000L
-                mutable.value=state.value.copy(phone=null,mfa=result.value,enrollment=null,error=null,mfaExpiresAtMillis=challengeExpiresAt,expiredMfa=false)
-            }
+            is PhoneLoginResult.MFAChallengeResponseValue -> startChallenge(result.value)
         }
     }
     val oidcProviders get()=state.value.native?.providers?.oidc.orEmpty().filter {it.key.startsWith("oidc:") && it.clientId.isNotBlank() && it.issuer.startsWith("https://")}
@@ -180,8 +193,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         ensure(api.nativeSocialReady,text(CoreStrings.CORE_DEVICE_SIGN_IN_IS_NOT_CONFIGURED_FOR_THIS_BUILD_CONTACT_YOUR))
         val result=try {api.oidc(provider,credential)}catch(f:org.spaceworks.app.platform.PlatformUnavailable){throw AuthMessage(text(CoreStrings.CORE_THIS_SIGN_IN_PROVIDER_IS_UNAVAILABLE_TRY_AGAIN))}
         ensureOperationCurrent()
-        ensure(!result.refresh.isNullOrBlank() && validGrant(result.deviceGrant),text(CoreStrings.CORE_THIS_SERVER_DID_NOT_RETURN_A_DEVICE_SESSION_CONTACT_YOUR_MAK))
-        acceptPair(TokenPair(result.access,requireNotNull(result.refresh)))
+        acceptSocial(result)
     }
     suspend fun enroll()=runOperation {
         val challenge=requireChallenge()
@@ -192,8 +204,10 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     suspend fun verify(code:String)=verifyWithOutcome(code,null)
     suspend fun verifyWithOutcome(code:String,onOutcome:((AuthOperationOutcome)->Unit)?)=runOperation(onOutcome=onOutcome) {
         val challenge=requireChallenge()
-        ensure(code.trim().length in 6..64,text(CoreStrings.CORE_ENTER_YOUR_AUTHENTICATOR_OR_RECOVERY_CODE))
-        val result=api.verify(challenge.challenge,code.trim(),challenge.enrollmentRequired)
+        val risk=challenge.purpose==MFAChallengeResponsePurposeEnum.risk
+        if(risk)ensure(Regex("\\d{6}").matches(code.trim()),text(CoreStrings.CORE_ENTER_THE_SIX_DIGIT_CODE))
+        else ensure(code.trim().length in 6..64,text(CoreStrings.CORE_ENTER_YOUR_AUTHENTICATOR_OR_RECOVERY_CODE))
+        val result=api.verify(challenge.challenge,code.trim(),challenge.enrollmentRequired && !risk,if(risk)FactorEnum.email_code else null)
         ensureOperationCurrent()
         ensure(result.surface!="verification_only" && !result.refresh.isNullOrBlank() && validGrant(result.deviceGrant),
             text(CoreStrings.CORE_THIS_SERVER_DID_NOT_RETURN_A_DEVICE_SESSION_CONTACT_YOUR_MAK))
@@ -201,6 +215,19 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         if (result.recoveryCodes.orEmpty().isNotEmpty()) mutable.value=state.value.copy(recoveryCodes=result.recoveryCodes.orEmpty())
         else finishMfaInternal()
     }
+    /** Emails a fresh code for an unusual-sign-in challenge; the server allows a few resends. */
+    suspend fun resendLoginCode()=runOperation {
+        val challenge=requireChallenge()
+        ensure(challenge.purpose==MFAChallengeResponsePurposeEnum.risk,text(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN))
+        val sent=api.resendLoginCode(challenge.challenge)
+        ensureOperationCurrent()
+        if(sent.sent) {
+            challengeExpiresAt=now()+sent.expiresIn.coerceAtLeast(0)*1000L
+            mutable.value=state.value.copy(mfaExpiresAtMillis=challengeExpiresAt,loginCodeResendsLeft=sent.resendsLeft,notice=text(CoreStrings.CORE_WE_SENT_A_NEW_CODE))
+        } else mutable.value=state.value.copy(loginCodeResendsLeft=sent.resendsLeft,error=text(CoreStrings.CORE_NO_MORE_CODES_CAN_BE_SENT_SIGN_IN_AGAIN))
+    }
+    /** A refresh or sign-in was refused with 426: this build is older than the server minimum. */
+    fun requireUpdate() {mutable.value=state.value.copy(gate=AuthGate.UPDATE_REQUIRED)}
     suspend fun finishMfa()=finishMfaWithOutcome(null)
     suspend fun finishMfaWithOutcome(onOutcome:((AuthOperationOutcome)->Unit)?)=runOperation(onOutcome=onOutcome) { finishMfaInternal() }
     private suspend fun finishMfaInternal() {
@@ -215,7 +242,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
     }
     suspend fun cancelMfa()=runOperation(ignoreThrottle=true) {
         clearInstalled(installedEpoch)
-        mutable.value=state.value.copy(mfa=null,enrollment=null,recoveryCodes=emptyList(),error=null,expiredMfa=false,mfaExpiresAtMillis=0)
+        mutable.value=state.value.copy(mfa=null,enrollment=null,recoveryCodes=emptyList(),error=null,expiredMfa=false,mfaExpiresAtMillis=0,loginCodeResendsLeft=null)
     }
     suspend fun expireMfa()=runOperation(ignoreThrottle=true) {
         if(state.value.mfa!=null && state.value.recoveryCodes.isEmpty() && now()>=challengeExpiresAt)clearExpiredChallenge()
@@ -239,7 +266,8 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         runOperation {
             if(state.value.user==null)return@runOperation
             refreshIdentity()
-            if(!staff || state.value.staffAllowed)authorized=state.value.memberships.singleOrNull {it.slug==slug}?.id
+            val id=state.value.memberships.singleOrNull {it.slug==slug}?.id
+            if(id!=null && (!staff || staffGrantFor(id)))authorized=id
         }
         return authorized
     }
@@ -419,6 +447,11 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         val received=try {api.me(expected)} catch(f:ApiFailure) {
             if(localIdentityRevision!=revision)return
             if(tokens.snapshot().epoch!=expected)rejectChangedSession()
+            if(f.updateRequired) {
+                // Nothing rotated: keep the stored session so it resumes after the update.
+                mutable.value=state.value.copy(gate=AuthGate.UPDATE_REQUIRED)
+                throw f
+            }
             if(f.status==401 || f.code=="device_superadmin_not_supported") {
                 saveSelection(null);mutable.value=state.value.copy(user=null,selectedId=null,
                     gate=if(f.code=="device_superadmin_not_supported")AuthGate.WEB_CONSOLE else AuthGate.SESSION_ENDED)
@@ -480,7 +513,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
             if(localIdentityRevision!=revision)return
             if(f is ApiFailure && f.status==429) retryAt=maxOf(retryAt,retryDeadlineMillis(now(),f.retryAfterSeconds?:60))
             mutable.value=state.value.copy(retryAtMillis=retryAt,
-                gate=if(f is ApiFailure && f.code=="device_superadmin_not_supported")AuthGate.WEB_CONSOLE else state.value.gate,
+                gate=if(f is ApiFailure && f.code=="device_superadmin_not_supported")AuthGate.WEB_CONSOLE else if(f is ApiFailure && f.updateRequired)AuthGate.UPDATE_REQUIRED else state.value.gate,
                 error=when(f){is MobileCopyException->text.failure(f);is ApiFailure->text.apiFailure(f);is AuthMessage->f.message ?: text(CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN);else->text(CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)})
             capture(AuthOperationKind.REJECTED)
         } finally {operationRevision=null;operationEpoch=null;mutable.value=state.value.copy(busy=endingLocalSession);operation.unlock()}
