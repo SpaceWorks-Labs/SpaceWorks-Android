@@ -105,3 +105,27 @@ Data safety/App privacy answers, deletion resource, content/age declarations, co
 owner signing details against the submitted binary and backend. The release handoff lists the
 live backend/provider and distribution checks still required. This document prepares copy and
 review steps; no store upload, closed test or TestFlight distribution is claimed.
+
+## Data safety (Google Play) and App privacy answers for telemetry
+
+These answers apply only when at least one telemetry provider is configured in the submitted build
+([TELEMETRY.md](TELEMETRY.md)); with none configured, the app collects nothing for analytics or
+diagnostics. Re-check them against the exact submitted binary and provider settings.
+
+| Data type (Play / App Store) | Collected | Provider | Purpose | Linked to user | Optional |
+|---|---|---|---|---|---|
+| App interactions (App activity → App interactions / Product interaction) | Yes, after consent | Firebase Analytics, PostHog, Clarity | Analytics | Pseudonymous ID only (SHA-256 of server and user id) | Yes |
+| Crash logs (App info and performance → Crash logs / Crash data) | Yes, after consent | Sentry | App functionality, analytics | Pseudonymous ID only | Yes |
+| Diagnostics (App info and performance → Diagnostics / Performance data, Other diagnostic data) | Yes, after consent | Sentry, Firebase | App functionality, analytics | Pseudonymous ID only | Yes |
+| Device or other IDs | Pseudonymous app-generated ID only; no advertising ID (AD_ID permission removed) | All | Analytics | Yes (pseudonymous) | Yes |
+| Personal info, financial info, messages, photos, location, contacts | No | — | — | — | — |
+
+- Not used for tracking or advertising; no data sold; no App Tracking Transparency prompt is needed.
+- Shared with the listed processors only to provide analytics and crash reporting on the owner's behalf.
+- Encrypted in transit (HTTPS to each provider).
+- Users can turn each purpose off in Profile → Privacy and analytics; withdrawal stops collection
+  immediately. Deletion of data already held by a provider is handled through the owner's privacy
+  contact and the provider's own deletion tools (state this in the privacy policy).
+- Session replay masks all text, inputs and images (Clarity project set to Strict) and is paused on
+  sign-in, payment, card, ticket, QR and camera screens.
+

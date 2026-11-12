@@ -1,5 +1,13 @@
 # Phase notes
 
+## UX-T — Design-Kit 0.12.0 and consent-gated telemetry (2026-11-12)
+
+Built by Claude. Design: `design/` follows SpaceWorks-Labs/SpaceWorks-Design `main` at `b2aa5bb`; the generated theme takes the solid-black dark palette, the `scrim` token (Material scrim for sheets), kit motion (app durations now name kit `fast`/`base` tokens and kit easing) and `cards.aurora` (membership card and event ticket). Typography (owner decision 2026-11-13, open-licensed fonts only): Outfit for interface text and display headings (800; light display 300), Unbounded for one accent phrase, converted from the kit's WOFF2 at prepare time with fontTools (platform-font fallback without it); no Gilroy face is bundled or converted, and both OFL texts are bundled. Patch, the mascot, appears on the first intro page (animated unless system animations are off) and on main empty lists, using the `dark/` art in dark theme.
+
+Telemetry: Firebase Analytics, PostHog, Microsoft Clarity and Sentry behind one facade, all off until configured and consented; consent sheet and Profile → Privacy and analytics; typed events from state holders at server-confirmed success; pseudonymous identity; scrubbed Sentry; replay paused on sensitive screens; debug and demo send nothing. See `docs/TELEMETRY.md`.
+
+Parity checklist: same event names, property values, screen names and consent copy as iOS `docs/TELEMETRY.md`; consent sheet (Help improve <app name>, switches for unasked purposes, Allow all, Save choices, Not now); Profile → Privacy and analytics with the withdrawal line.
+
 ## V1 — v2 PRD extras: usage, staff dashboard, messaging consent, phone restore (2026-10-18)
 
 Built by Claude. Adds the backend v2 PRD features that were published but missing: member Home **Your activity** (my-usage), staff **Today at a glance** (dashboard counters, handover queue tiles, report widgets), Profile **Text and WhatsApp messages** consent, and **Restore a deleted account** by phone. All five operations go through the generated client and are listed in `scripts/contract.py`; copy lives in the new `insights_strings.xml` catalog (registered in `tokens/mobile-copy.json`). `NullEnum` is mapped to `JsonElement` to keep the generator compiling.

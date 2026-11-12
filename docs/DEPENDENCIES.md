@@ -15,7 +15,7 @@ maintenance phase validates a replacement.
 | Kotlin Android / Compose / serialization plugins | 2.2.21 |
 | OpenAPI Generator | 7.26.0; generated Kotlin Retrofit/serialization client |
 | Google Services plugin | 4.5.0; applied only when private configuration exists |
-| Build environment | JDK 21, Python 3, Android SDK 36; JVM target 17 |
+| Build environment | JDK 21, Python 3, Android SDK 36; JVM target 17; fontTools + brotli for WOFF2 font conversion (`brew install fonttools`) |
 | Dependency repositories | Google Maven and Maven Central; plugin portal for plugins |
 
 The wrapper's `distributionSha256Sum` is
@@ -31,7 +31,8 @@ JAR is unchanged; CI's Gradle setup action also validates wrapper JARs.
 | Compose | BOM 2025.10.01; Material 3, Material icons core, UI test JUnit4/test manifest |
 | AndroidX | Activity 1.11.0; Navigation 2.9.5; Lifecycle 2.9.4; Credentials and Play Services adapter 1.6.0 |
 | Google identity / integrity | GoogleID 1.1.1; Play Integrity 1.6.0 |
-| Firebase | BOM 34.4.0; Messaging |
+| Firebase | BOM 34.4.0; Messaging; Analytics (consent-gated, no ad id) |
+| Telemetry | PostHog Android 3.76.2; Microsoft Clarity Compose 3.10.0; Sentry Android 8.64.0 |
 | Camera / images / scans | CameraX core/camera2/lifecycle/view 1.5.3; ExifInterface 1.4.2; ML Kit barcode scanning 17.3.0 |
 | Kotlin libraries | Coroutines Android/test 1.10.2; serialization JSON 1.9.0 |
 | HTTP / serialization | Retrofit and serialization converter 2.11.0; OkHttp / MockWebServer 4.12.0 |
@@ -55,16 +56,31 @@ Their licenses and applicable provider terms remain independent of the app's cod
 and brand assets. No root application-code license is declared in this repository;
 do not infer an MIT/Apache grant from an individual dependency or the Design repo.
 
+## Telemetry SDKs (owner extension 2026-11-12)
+
+The owner authorized four telemetry providers (see [TELEMETRY.md](TELEMETRY.md)); every one is off until
+configured and consented, and none is initialized before consent.
+
+| SDK | Version | Why |
+|---|---|---|
+| `com.google.firebase:firebase-analytics` | from the existing Firebase BoM 34.4.0 (shared with FCM, so the BoM is not bumped here) | Usage analytics. Ad-id permission removed, collection off in the manifest, Consent Mode ad signals denied. No Crashlytics. |
+| `com.posthog:posthog-android` | 3.76.2 (latest stable on Maven Central, 2026-11-12) | Product analytics with the same events; autocapture, session replay and feature flags off. |
+| `com.microsoft.clarity:clarity-compose` | 3.10.0 (latest stable) | Session replay/heatmaps for Compose; Strict masking (project setting), paused on sensitive screens. |
+| `io.sentry:sentry-android` | 8.64.0 (latest stable) | Crash, ANR and performance reports with a PII scrubber; auto-init disabled. No Sentry Gradle plugin (no auth token or mapping upload in the repo). |
+
+All four ship consumer R8 rules in their AARs; no app ProGuard rules were needed (`assembleRelease`
+with minify passes). New transitive inputs include PostHog's OkHttp/Gson usage, Clarity's protobuf-javalite
+and install-referrer, and Google measurement libraries; review them with the rest of the graph.
+
 ## Fonts and assets
 
-Gilroy uses the owner-supplied four faces and explicit native weight mapping; retain
-[its conversion and license distinction](licenses/Gilroy-native-fonts.md). Separate
-owner confirmation of app-embedding/distribution rights remains a release input;
-the old free Light/ExtraBold EULA does not license those four supplied faces.
-Unbounded is limited to short accent copy. Its existing copyright and full OFL
-text are copied unchanged into `app/src/main/assets/licenses/OFL-Unbounded.txt`;
-the packaging gate requires those exact source bytes in each APK. See
-[font provenance](licenses/FONT-PROVENANCE.md) and [the full OFL](licenses/OFL-Unbounded.txt).
+Typography uses open-licensed fonts only (owner decision 2026-11-13): Outfit (OFL) for interface text and
+display headings (800, light display 300), Unbounded (OFL) for one accent phrase. The kit's WOFF2 files are
+decoded to TTF at prepare time; no other font is bundled or converted. Both full OFL texts are copied
+unchanged into `app/src/main/assets/licenses/` and the packaging gate requires their exact bytes in each APK.
+See [font provenance](licenses/FONT-PROVENANCE.md). Patch mascot WebPs come unaltered from the kit's
+`mascot/compressed/` and `mascot/dark/compressed/` (the light idle frame is the loop's first frame,
+extracted losslessly with `webpmux -get frame 1`).
 Logo masters stay pinned to Design, and README screenshot provenance stays bound
 to its recorded tested app commit. Do not rewrite third-party notices or invent
 rights for replacement assets.
