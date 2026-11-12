@@ -199,7 +199,7 @@ object Errors {
     fun map(status: Int, body: String?, retryAfter: String? = null, now: Instant = Instant.now()): ApiFailure {
         val error = try { body?.let { json.decodeFromString<HardwareRequestError>(it) } } catch (_: Exception) { null }
         val envelope = try { body?.let { json.parseToJsonElement(it) as? JsonObject } } catch (_: Exception) { null }
-        val code = error?.code ?: (envelope?.get("code") as? JsonPrimitive)?.contentOrNull
+        val code = error?.code ?: org.spaceworks.app.features.Eligibility.code(envelope?.get("code"))
         val serverDetail = error?.detail ?: (envelope?.get("detail") as? JsonPrimitive)?.contentOrNull
         fun messages(value: JsonElement, path:String): List<Pair<String,String>> = when (value) {
             is JsonPrimitive -> listOfNotNull(value.contentOrNull?.takeIf {it.isNotBlank()}?.let {path to it})
@@ -213,7 +213,7 @@ object Errors {
             "device_superadmin_not_supported" -> org.spaceworks.app.copy.CoreStrings.CORE_USE_THE_WEB_CONSOLE
             "payment_rail_conflict" -> org.spaceworks.app.copy.CoreStrings.CORE_FINISH_THIS_PAYMENT_ON_THE_WEB
             "payments_unavailable" -> org.spaceworks.app.copy.CoreStrings.CORE_ONLINE_PAYMENT_IS_UNAVAILABLE_TRY_AGAIN_LATER_OR_PAY_AT_THE
-            else -> if (!serverDetail.isNullOrBlank() || fieldDetail != null) null else when(status) {
+            else -> org.spaceworks.app.features.Eligibility.copy(code) ?: if (!serverDetail.isNullOrBlank() || fieldDetail != null) null else when(status) {
                 400 -> org.spaceworks.app.copy.CoreStrings.CORE_CHECK_THE_DETAILS_AND_TRY_AGAIN
                 401 -> org.spaceworks.app.copy.CoreStrings.CORE_PLEASE_SIGN_IN_AGAIN
                 403 -> org.spaceworks.app.copy.CoreStrings.CORE_YOU_DO_NOT_HAVE_PERMISSION_TO_DO_THIS

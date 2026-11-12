@@ -87,6 +87,22 @@ phase3_operations |= {
     'api_v1_auth_login_code_resend_create','api_v1_auth_device_staff_grant_create',
     'api_v1_handles_check_retrieve','api_v1_member_profile_handle_create','api_v1_auth_mfa_create',
 }
+# Backend 0.12.0 P1 features (one line per feature).
+phase3_operations |= {'api_v1_member_makerspaces_borrowing_history_list'}
+phase3_operations |= {'api_v1_member_makerspaces_waiver_retrieve','api_v1_member_makerspaces_waiver_accept_create'}
+phase3_operations |= {'api_v1_public_equipment_kits_list','api_v1_public_equipment_kit_retrieve','api_v1_public_requests_contextual_create'}
+phase3_operations |= {'api_v1_member_makerspaces_calendar_feeds_retrieve','api_v1_member_makerspaces_calendar_feeds_create','api_v1_member_makerspaces_calendar_feeds_destroy',
+    'api_v1_member_makerspaces_event_calendar_feed_retrieve','api_v1_member_makerspaces_event_calendar_feed_create','api_v1_member_makerspaces_event_calendar_feed_destroy'}
+phase3_operations |= {'api_v1_auth_social_providers_create'}
+phase3_operations |= {'api_v1_admin_makerspace_reports_catalog_retrieve','api_v1_admin_makerspace_analytics_retrieve'}
+phase3_operations |= {'api_v1_notifications_inbox_snooze_create'}
+phase3_operations |= {'api_v1_admin_spaces_eligible_members_retrieve','api_v1_admin_spaces_bookings_quote_create','api_v1_admin_spaces_bookings_readiness_retrieve','api_v1_admin_bookings_readiness_retrieve','api_v1_admin_spaces_bookings_create'}
+phase3_operations |= {
+    'api_v1_admin_makerspace_requests_event_context_retrieve','api_v1_admin_makerspace_requests_event_context_update','api_v1_admin_makerspace_requests_event_context_destroy',
+    'api_v1_admin_makerspace_requests_booking_context_retrieve','api_v1_admin_makerspace_requests_booking_context_update','api_v1_admin_makerspace_requests_booking_context_destroy',
+    'api_v1_admin_makerspace_direct_loans_event_context_retrieve','api_v1_admin_makerspace_direct_loans_event_context_update','api_v1_admin_makerspace_direct_loans_event_context_destroy',
+    'api_v1_admin_makerspace_direct_loans_booking_context_retrieve','api_v1_admin_makerspace_direct_loans_booking_context_update','api_v1_admin_makerspace_direct_loans_booking_context_destroy',
+}
 # Operations that 0.12.0 added on an already-selected path but the app does not call.
 unused_operations={'api_v1_auth_me_partial_update'}
 base_paths=set(selected)

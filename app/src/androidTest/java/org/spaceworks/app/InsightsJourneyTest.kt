@@ -58,9 +58,9 @@ class InsightsJourneyTest {
     @Test fun consentSwitchFollowsServerAndExplainsVerification() {
         val api=JourneyInsights();val insights=holder(api)
         show {MessagingConsentScreen(insights,{},{})}
-        journey.waitText("Text and WhatsApp messages");journey.waitText("Messages go to •••• 3210.")
-        journey.waitText("Verify your phone number in Account and security before turning this on.")
-        compose.onNodeWithTag("consent-whatsapp").assertIsNotEnabled()
+        journey.waitText("Text messages");journey.waitText("Messages go to •••• 3210.")
+        // WhatsApp needs a provider-signed endpoint proof: no switch is offered for it.
+        compose.onNodeWithTag("consent-whatsapp").assertDoesNotExist()
         journey.clickTag("consent-sms")
         compose.waitUntil(10000) {api.writes.isNotEmpty()}
         assertEquals(listOf("sms" to true),api.writes);journey.waitText("On");journey.shot("v2-consent")

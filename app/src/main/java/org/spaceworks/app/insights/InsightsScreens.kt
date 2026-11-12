@@ -179,7 +179,9 @@ private fun counterLabel(key:String)=when(key) {
             Text(copyText(InsightsStrings.INSIGHTS_MESSAGES_HELP),color=MaterialTheme.colorScheme.onSurfaceVariant)
             BrandError(s.consentError)
             MemberLoaded(s.messaging,{scope.launch {holder.refreshMessaging()}}) {consent->
-                listOf("sms" to consent.sms,"whatsapp" to consent.whatsapp).forEach {(key,channel)->
+                // WhatsApp needs a provider-signed endpoint proof (personal endpoints), not a switch; the backend refuses
+                // a consent toggle for it, so only SMS is offered here until that flow exists natively.
+                listOf("sms" to consent.sms).forEach {(key,channel)->
                     val title=copyText(if(key=="sms")InsightsStrings.INSIGHTS_SMS else InsightsStrings.INSIGHTS_WHATSAPP)
                     val busy=s.consentBusy==key
                     val enabled=s.consentBusy==null && (channel.consented || channel.canOptIn)

@@ -102,6 +102,9 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     BackHandler(showingPrivacy){showingPrivacy=false}
     BackHandler(showingMessaging){showingMessaging=false}
     LaunchedEffect(insights,state.selectedId) {state.selected?.let {insights?.activate(MemberScope(it.id,it.slug))}}
+    val features=bundle.features
+    var featureRoute by remember(state.selectedId){mutableStateOf<org.spaceworks.app.features.FeatureRoute?>(null)}
+    LaunchedEffect(features,state.selectedId) {state.selected?.let {features?.activate(MemberScope(it.id,it.slug))}}
     var paymentRoute by remember(state.selectedId){mutableStateOf<Pair<Long,String?>?>(null)}
     val nativeCheckout=LocalNativeCheckout.current
     val nativeState=nativeCheckout?.state?.collectAsStateWithLifecycle()?.value?:NativePaymentState.Idle
@@ -111,7 +114,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     var navigationError by remember(bundle){mutableStateOf<String?>(null)}
     var homeExtra by remember(state.selectedId){mutableStateOf<Pair<Long,String>?>(null)}
     var inboxNavigationSerial by remember(state.selectedId){mutableLongStateOf(0)}
-    fun navigate(index:Int){destination=index;homeExtra=null;if(index==3)inboxNavigationSerial++}
+    fun navigate(index:Int){destination=index;homeExtra=null;featureRoute=null;if(index==3)inboxNavigationSerial++}
     LaunchedEffect(links?.delivered?.sequence,readyScope,actionState?.scope,showingStaff,showingGuide) {
         if(showingStaff || showingGuide)return@LaunchedEffect
         val route=links?.delivered?:return@LaunchedEffect
@@ -185,6 +188,9 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                     }
                 }}
                 if(clock<(content?.retryAtMillis?:0))Text(copyText(UiStrings.MOBILE_TRY_AGAIN_IN_VALUES,retrySecondsRemaining(clock,requireNotNull(content).retryAtMillis)),Modifier.padding(16.dp),color=MaterialTheme.colorScheme.onPrimaryContainer)
+                if(features!=null && destination==0 && featureRoute==null && actionState?.route==null && !showingPayments && !showingStaff && !showingGuide && !showingMessaging &&
+                    content?.scope?.id==state.selectedId && content?.overview?.value?.waiverRequired==true)
+                    org.spaceworks.app.features.WaiverPendingBanner {featureRoute=org.spaceworks.app.features.FeatureRoute.WAIVER}
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     if(destination==4 && !showingPrivacy && !showingGuide && !showingStaff && !showingPayments && !showingMessaging && actionState?.route==null)org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.PROFILE)
                     when {
@@ -198,8 +204,13 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 org.spaceworks.app.theme.BrandLinks.privacyURL?.takeIf {org.spaceworks.app.account.AccountLinkPolicy.safe(it)}?.let {url->
                                     BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_privacy),{runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}})}
                             })
+                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),member,state.googleClientId,{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
-                            dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
+                            dashboard={
+                                insights?.let {org.spaceworks.app.insights.StaffDashboardPanel(it)}
+                                if(features!=null)org.spaceworks.app.features.StaffReportsEntry {featureRoute=org.spaceworks.app.features.FeatureRoute.STAFF_REPORTS}
+                            },loanContext=features?.let {f->{id,direct,events,bookings->org.spaceworks.app.features.LoanContextPanel(f.context,org.spaceworks.app.features.LoanRef(id,direct),events,bookings)}},
+                            bookingTools=features?.let {f->{spaceId,bookingId->if(bookingId==null)org.spaceworks.app.features.StaffBookingPanel(f.booking,spaceId) else org.spaceworks.app.features.StaffBookingReadiness(f.booking,bookingId)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
                         showingStaff -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
                         showingPayments && paymentState?.scope?.id!=state.selectedId -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
@@ -229,6 +240,8 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 if(grant!=null && staffAvailable)BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_SIGN_OUT_OF_STAFF_TOOLS),{scope.launch {showingStaff=false;staff?.clear();grant.signOut()}},!state.busy,modifier=Modifier.semantics {testTag="staff-sign-out"})
                                 onAccount?.let {BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_title),it,!state.busy,modifier=Modifier.semantics {testTag="account-entry"})}
                                 if(payments!=null)BrandTextButton(copyText(PaymentStrings.PAYMENT_PAYMENTS),{showingPayments=true},!state.busy,modifier=Modifier.semantics {testTag="payments-entry"})
+                                if(features!=null && state.googleClientId!=null)BrandTextButton(copyText(org.spaceworks.app.features.FeatureStrings.LINK_TITLE),{featureRoute=org.spaceworks.app.features.FeatureRoute.LINK_PROVIDER},!state.busy,modifier=Modifier.semantics {testTag="link-provider-entry"})
+                                if(features!=null)BrandTextButton(copyText(org.spaceworks.app.features.FeatureStrings.WAIVER_TITLE),{featureRoute=org.spaceworks.app.features.FeatureRoute.WAIVER},!state.busy,modifier=Modifier.semantics {testTag="waiver-entry"})
                                 state.memberships.filter {it.id!=state.selectedId}.forEach {membership ->
                                     BrandTextButton(copyText(UiStrings.MOBILE_SWITCH_TO_VALUE,makerspaceLabel(membership.slug)),{bundle.links?.clear();bundle.holder.select(membership.id)},!state.busy)
                                 }
@@ -253,8 +266,9 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                         content?.scope?.id!=state.selectedId -> Column(Modifier.padding(24.dp)) {LinearProgressIndicator(Modifier.fillMaxWidth());Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE))}
                         destination==0 -> MemberHome(member,state.user?.displayName.orEmpty().ifBlank {state.user?.username.orEmpty()},{navigate(1)},bundle.demo,homeExtra,onPayments=payments?.let {{showingPayments=true}},guideProgress=guidance,bookingsEnabled=actionState?.capabilities?.value?.bookableSpaces==true,onProfile={navigate(4)},usage=insights?.let {holder->{org.spaceworks.app.insights.MemberUsagePanel(holder)}})
                         destination==1 -> MemberInventory(member)
-                        destination==2 -> MemberActivityScreen(member)
-                        else -> MemberInboxScreen(member,notifications={bundle.push?.let {push->NotificationsPanel(push,bundle.demo,bundle.pushConfigured,state.memberships.associate {it.id to makerspaceLabel(it.slug)},bundle.pushPreview){hint->bundle.links?.offer(hint)}}},onOpenUpdate={bundle.links?.offer(it)},navigationSequence=inboxNavigationSerial)
+                        destination==2 -> MemberActivityScreen(member) {features?.let {org.spaceworks.app.features.ActivityFeatureEntries {featureRoute=it}}}
+                        else -> MemberInboxScreen(member,notifications={bundle.push?.let {push->NotificationsPanel(push,bundle.demo,bundle.pushConfigured,state.memberships.associate {it.id to makerspaceLabel(it.slug)},bundle.pushPreview){hint->bundle.links?.offer(hint)}}},onOpenUpdate={bundle.links?.offer(it)},navigationSequence=inboxNavigationSerial,
+                            messageActions={message,close->features?.let {org.spaceworks.app.features.InboxSnoozeActions(it.snooze,message) {close();scope.launch {member.refreshInbox()}}}})
                     }
                 }
                 state.error?.let {Box(Modifier.padding(horizontal=24.dp)){BrandError(it)}}

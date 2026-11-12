@@ -176,7 +176,10 @@ object FcmRegistration {
 
 object NotificationAccess {
     private const val CHANNEL="spaceworks_updates"
-    fun createChannel(context:Context) {context.getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(CHANNEL,context.getString(R.string.mobile_makerspace_updates),NotificationManager.IMPORTANCE_DEFAULT))}
+    fun createChannel(context:Context) {
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(CHANNEL,context.getString(R.string.mobile_makerspace_updates),NotificationManager.IMPORTANCE_DEFAULT))
+        org.spaceworks.app.features.NotificationChannels.create(context)
+    }
     fun channel():String=CHANNEL
     fun needsRuntimePermission(sdk: Int, permissionGranted: Boolean): Boolean = sdk >= 33 && !permissionGranted
     fun allowed(context: Context): Boolean =
@@ -218,13 +221,14 @@ class SpaceWorksMessagingService : FirebaseMessagingService() {
         val requestId = (hint.eventId ?: message.messageId ?: message.data.toSortedMap().toString()).hashCode()
         val pending = PendingIntent.getActivity(this, requestId, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notifications = getSystemService(NotificationManager::class.java)
-        notifications.createNotificationChannel(NotificationChannel(NotificationAccess.channel(), getString(R.string.mobile_makerspace_updates), NotificationManager.IMPORTANCE_DEFAULT))
-        val notification = android.app.Notification.Builder(this, NotificationAccess.channel())
+        NotificationAccess.createChannel(this)
+        val channel = org.spaceworks.app.features.NotificationChannels.channelFor(message.data["channel"], NotificationAccess.channel())
+        val notification = android.app.Notification.Builder(this, channel)
             .setSmallIcon(android.R.drawable.ic_dialog_email)
             .setContentTitle(applicationInfo.loadLabel(packageManager))
             .setContentText(getString(R.string.mobile_open_your_inbox_for_the_latest_update))
             .setStyle(android.app.Notification.BigTextStyle().bigText(getString(R.string.mobile_open_your_inbox_for_the_latest_update)))
-            .setContentIntent(pending).setAutoCancel(true).setGroup("makerspace-${hint.makerspaceId}").build()
+            .setContentIntent(pending).setAutoCancel(true).setGroup("sw.${hint.makerspaceId}").build()
         try { notifications.notify(requestId, notification) } catch (_: SecurityException) { /* Permission changed while receiving. */ }
     }
 

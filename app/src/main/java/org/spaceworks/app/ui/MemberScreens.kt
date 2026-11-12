@@ -245,7 +245,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
         }
     }
 }
-@Composable fun MemberActivityScreen(holder:MemberStateHolder) {
+@Composable fun MemberActivityScreen(holder:MemberStateHolder,entries:@Composable ColumnScope.()->Unit={}) {
     org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.ACTIVITY)
     val copyText=rememberMobileText()
 
@@ -254,6 +254,8 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
     LaunchedEffect(holder,state.scope) {kotlinx.coroutines.yield();if(holder.state.value.overview.value==null && !holder.state.value.overview.loading)holder.refreshOverview()}
     MemberPageColumn(copyText(UiStrings.MOBILE_ACTIVITY),makerspaceLabel(state.scope?.slug.orEmpty())) {
+        // Outside the membership-gated overview: account-only borrowers still reach their own history.
+        entries()
         MemberLoaded(state.overview,{scope.launch {holder.refreshOverview()}}) {overview->
             MemberSection(copyText(UiStrings.MOBILE_REQUESTS)) {if(actionState?.recentRequest!=null)BrandTextButton(copyText(UiStrings.MOBILE_TRACK_RECENT_REQUEST),{actions?.openRecentRequest()});if(overview.requests.isEmpty() && overview.serviceRequests.isEmpty())MemberEmpty()
                 overview.requests.forEach {request->MemberPanel {Text(copyText(UiStrings.MOBILE_VALUE_ITEMS,request.itemCount),style=MaterialTheme.typography.titleMedium);Text(memberStatus(request.status,copyText));Text(memberDate(request.createdAt))}}
@@ -267,7 +269,8 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
         }
     }
 }
-@Composable fun MemberInboxScreen(holder:MemberStateHolder,notifications:@Composable ()->Unit={},onOpenUpdate:(String)->Unit={},navigationSequence:Long=0) {
+@Composable fun MemberInboxScreen(holder:MemberStateHolder,notifications:@Composable ()->Unit={},onOpenUpdate:(String)->Unit={},navigationSequence:Long=0,
+    messageActions:@Composable (InboxItem,close:()->Unit)->Unit={_,_->}) {
     org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.INBOX)
     val copyText=rememberMobileText()
 
@@ -284,6 +287,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
             Text(if(message.readAt!=null)copyText(UiStrings.MOBILE_READ) else copyText(UiStrings.MOBILE_UNREAD),style=MaterialTheme.typography.labelLarge)
             message.link?.takeIf {it.isNotBlank()}?.let {link->BrandButton(copyText(UiStrings.MOBILE_OPEN_UPDATE),{onOpenUpdate(link)})}
             if(message.readAt==null)BrandButton(copyText(UiStrings.MOBILE_MARK_AS_READ),{scope.launch {if(holder.markRead(message.id))selected=null}},!state.inboxBusy)
+            messageActions(message) {selected=null}
             BrandError(state.inbox.error)
     } else MemberLazyPage(copyText(UiStrings.MOBILE_INBOX),state.inbox,listState,retry={scope.launch {holder.refreshInbox()}},key={it.id},header={
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {

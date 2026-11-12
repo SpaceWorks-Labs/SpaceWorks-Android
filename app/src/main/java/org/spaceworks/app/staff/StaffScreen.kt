@@ -61,11 +61,16 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
 
 /** All physical mutations require visible review and confirmation. Camera callbacks resolve only. */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun StaffScreen(holder:StaffStateHolder,demo:Boolean,onBack:()->Unit,previewScope:org.spaceworks.app.member.MemberScope?=null,dashboard:(@Composable ()->Unit)?=null){
+/** [loanContext] renders the "what it's for" panel of a request (`direct`=false) or direct handout, given the loaded event/booking choices. */
+@Composable fun StaffScreen(holder:StaffStateHolder,demo:Boolean,onBack:()->Unit,previewScope:org.spaceworks.app.member.MemberScope?=null,dashboard:(@Composable ()->Unit)?=null,
+    loanContext:(@Composable (id:Int,direct:Boolean,events:List<Pair<Int,String>>,bookings:List<Pair<Int,String>>)->Unit)?=null,
+    /** New booking for a member (`bookingId`=null) or readiness of an existing booking. */
+    bookingTools:(@Composable (spaceId:Int,bookingId:Int?)->Unit)?=null){
     org.spaceworks.app.telemetry.TrackScreen(org.spaceworks.app.telemetry.TelemetryScreen.STAFF_TOOLS)
     val text=rememberMobileText()
 
     val s by holder.state.collectAsStateWithLifecycle();val work=rememberCoroutineScope()
+    var contextLoan by remember(s.scope){mutableStateOf<Int?>(null)}
     val feedback=rememberActionFeedback(holder to (s.scope to s.section))
     val focus=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
     val scroll=rememberScrollState();var confirmation by remember(s.scope,s.section){mutableStateOf<StaffConfirmation?>(null)}
@@ -147,13 +152,16 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
                     BrandTextButton(text(StaffStrings.STAFF_REFRESH_REQUESTS),{launch{holder.loadQueue()}},enabled)
                     MoreStaff(s,"queue",enabled){launch{holder.loadQueue(true)}}
                 }
-                StaffSection.REQUEST->{s.selectedRequest?.let{row->StaffRequestDetail(holder,row,enabled){title,detail,action->confirmation=StaffConfirmation(title,detail,action)}}}
+                StaffSection.REQUEST->{s.selectedRequest?.let{row->StaffRequestDetail(holder,row,enabled){title,detail,action->confirmation=StaffConfirmation(title,detail,action)}
+                    loanContext?.invoke(row.id,false,s.events.map{it.id to it.title},s.bookings.map{it.id to it.name})}}
                 StaffSection.DIRECT->{
                     if(holder.can("issue_direct_loan")&&holder.can("upload_evidence"))BrandButton(text(StaffStrings.STAFF_NEW_DIRECT_HANDOUT),{holder.beginHandover(StaffHandoverMode.DIRECT_ISSUE)},enabled,Modifier.testTag("staff-direct-new"))
                     if("direct" !in s.loading&&s.directLoans.isEmpty())Text(text(StaffStrings.STAFF_NO_DIRECT_LOANS))
                     s.directLoans.forEach{loan->StaffCard{Text(text(StaffStrings.STAFF_LOAN_1_S, loan.id),style=MaterialTheme.typography.titleLarge);Text(loan.targetLabel);Text(text(StaffStrings.STAFF_STATUS_1_S, loan.status))
                         loan.items.forEach{Text("${it.productName} · ${it.quantity}")}
-                        if(loan.status=="active"&&holder.can("return_request")&&holder.can("upload_evidence"))BrandTextButton(text(StaffStrings.STAFF_RECORD_RETURN),{holder.beginHandover(StaffHandoverMode.DIRECT_RETURN,loan.id)},enabled,Modifier.testTag("staff-direct-return-${loan.id}"))}}
+                        if(loan.status=="active"&&holder.can("return_request")&&holder.can("upload_evidence"))BrandTextButton(text(StaffStrings.STAFF_RECORD_RETURN),{holder.beginHandover(StaffHandoverMode.DIRECT_RETURN,loan.id)},enabled,Modifier.testTag("staff-direct-return-${loan.id}"))
+                        if(loanContext!=null){if(contextLoan==loan.id)loanContext(loan.id,true,s.events.map{it.id to it.title},s.bookings.map{it.id to it.name})
+                            else BrandTextButton(text(org.spaceworks.app.features.FeatureStrings.CONTEXT_TITLE),{contextLoan=loan.id},enabled,Modifier.testTag("staff-direct-context-${loan.id}"))}}}
                     BrandTextButton(text(StaffStrings.STAFF_REFRESH_DIRECT_LOANS),{launch{holder.loadDirect()}},enabled);MoreStaff(s,"direct",enabled){launch{holder.loadDirect(true)}}
                 }
                 StaffSection.HANDOVER->StaffHandover(holder,preview,enabled){title,detail,action->confirmation=StaffConfirmation(title,detail,action)}
@@ -180,9 +188,11 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
                 }
                 StaffSection.BOOKINGS->{
                     Text(s.selectedSpace?.name.orEmpty(),style=MaterialTheme.typography.titleLarge)
+                    if(holder.can("manage_bookings"))s.selectedSpace?.let{space->bookingTools?.invoke(space.id,null)}
                     if("bookings" !in s.loading&&s.bookings.isEmpty())Text(text(StaffStrings.STAFF_NO_BOOKINGS_FOR_THIS_SPACE))
                     s.bookings.forEach{row->StaffCard{Text(row.name,style=MaterialTheme.typography.titleLarge);Text("${row.startsAt} – ${row.endsAt}");Text(text(StaffStrings.STAFF_STATUS_1_S, row.status.value.replace('_',' ')))
                         row.payment?.let{Text(text(StaffStrings.STAFF_PAYMENT_1_S, it.status))}
+                        s.selectedSpace?.let{space->bookingTools?.invoke(space.id,row.id)}
                         // 0.12.0: rejecting a booking requires a reason (at most 1000 characters).
                         var reason by remember(row.id){mutableStateOf("")}
                         if(row.status.value=="pending"&&holder.can("manage_bookings"))BrandField(reason,{reason=it.take(1000)},text(StaffStrings.STAFF_REASON_FOR_REJECTION),Modifier.testTag("staff-booking-reason-${row.id}"),enabled=enabled)

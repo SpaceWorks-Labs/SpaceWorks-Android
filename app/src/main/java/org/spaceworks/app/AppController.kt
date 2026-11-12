@@ -32,6 +32,8 @@ class AppController(application:Application):AndroidViewModel(application) {
     private val fixed=BuildConfig.SERVER_URL
     private val incomingMutable=MutableStateFlow<PendingNativeIntent?>(null)
     val incoming=incomingMutable.asStateFlow()
+    // Payload v3 topic channels exist from first launch so people can mute a topic before its first push.
+    init {runCatching {org.spaceworks.app.features.NotificationChannels.create(application)}}
     private var intentSequence=0L
     /** A URL can express intent; it never configures or changes the selected server. */
     fun receive(intent:Intent) {
@@ -71,6 +73,7 @@ class AppController(application:Application):AndroidViewModel(application) {
         var payments:org.spaceworks.app.payments.PaymentsStateHolder?=null
         var staff:org.spaceworks.app.staff.StaffStateHolder?=null
         var insights:org.spaceworks.app.insights.InsightsStateHolder?=null
+        var features:org.spaceworks.app.features.MemberFeatures?=null
         lateinit var staffGrant:org.spaceworks.app.staff.StaffGrantStateHolder
         val server=ServerAddress.parse(origin,BuildConfig.DEBUG)
         val trust=EncryptedDeviceTrustStore.sharedAndroid(application,origin)
@@ -90,8 +93,8 @@ class AppController(application:Application):AndroidViewModel(application) {
         holder=AuthStateHolder(gateway,store,
             readSelection={prefs.getInt("space.$origin",-1).takeIf {it>0}},
             saveSelection={id->prefs.edit().apply {if(id==null)remove("space.$origin")else putInt("space.$origin",id)}.apply()},
-            onSessionEnded={staffGrant.clearLocal();insights?.clear();accounts?.clear();runtime?.let(management::sessionEnded);staff?.resetAccount();member?.clear();actions?.clear();payments?.clear();links?.clear();push?.pause()},
-            onScopeChanged={insights?.clear();runtime?.let(management::scopeChanged);staff?.clear();member?.clear();actions?.clear();payments?.clear()},text=copyText,
+            onSessionEnded={staffGrant.clearLocal();insights?.clear();features?.clear();accounts?.clear();runtime?.let(management::sessionEnded);staff?.resetAccount();member?.clear();actions?.clear();payments?.clear();links?.clear();push?.pause()},
+            onScopeChanged={insights?.clear();features?.clear();runtime?.let(management::scopeChanged);staff?.clear();member?.clear();actions?.clear();payments?.clear()},text=copyText,
             appVersion=BuildConfig.VERSION_NAME,staffGrantFor=staffGrant::covers)
         session.bindIdentityEpoch {holder.acceptedInstallationEpoch}
         session.onUpdateRequired={holder.requireUpdate()}
@@ -151,6 +154,7 @@ class AppController(application:Application):AndroidViewModel(application) {
             holder::endLocalSession,holder::foreground,holder::dropConfirmedMembership)
         insights=org.spaceworks.app.insights.InsightsStateHolder(org.spaceworks.app.insights.GeneratedInsightsGateway(session,staffSession),
             failureText={copyText.apiFailure(it)},unavailableText={copyText(org.spaceworks.app.copy.CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)},onUnauthorized={holder.foreground()})
+        features=org.spaceworks.app.features.createMemberFeatures(session,staffSession,copyText,{holder.foreground()}) {staffGrant.foreground()}
         val deletedNotice=application.getString(R.string.deletion_deleted)
         val bundle=AuthBundle(holder,store,accounts=accounts,member=member,actions=actions,origin=session.server.toString(),push=push,links=links,pushConfigured=FcmRegistration.configured(application),sessionEpoch={store.snapshot().epoch},payments=payments,staff=staff,
             staffAvailable={holder.state.value.selected?.let {staffGrant.covers(it.id)}==true},management=management,
@@ -162,7 +166,7 @@ class AppController(application:Application):AndroidViewModel(application) {
                     {id->holder.state.value.memberships.firstOrNull {it.id==id}?.slug?.let {org.spaceworks.app.ui.makerspaceLabel(it)}},
                     {id->id!=null && staffGrant.covers(id) && holder.state.value.memberships.any {it.id==id}},
                     session.server.host,{holder.state.value.googleClientId})
-            },insights=insights)
+            },insights=insights,features=features)
         management.register(bundle,requireNotNull(runtime)) {owner->GeneratedAccountGateway(session,owner.hasSession,owner.selected,application.resources::accountText)}
         viewModelScope.launch {store.installationEpoch.collect {holder.invalidateInstallation(it)}}
         // Pseudonymous telemetry identity follows the signed-in user and staff authority; cleared on sign-out.

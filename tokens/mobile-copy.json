@@ -58,5 +58,11 @@
     "package": "org.spaceworks.app.telemetry",
     "object": "TelemetryStrings",
     "output": "app/src/main/java/org/spaceworks/app/telemetry/TelemetryStrings.kt"
+  },
+  {
+    "catalog": "app/src/main/res/values/feature_strings.xml",
+    "package": "org.spaceworks.app.features",
+    "object": "FeatureStrings",
+    "output": "app/src/main/java/org/spaceworks/app/features/FeatureStrings.kt"
   }
 ]
