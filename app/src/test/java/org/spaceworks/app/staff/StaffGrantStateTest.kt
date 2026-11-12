@@ -43,6 +43,17 @@ class StaffGrantStateTest {
         assertEquals(listOf("issue_request","return_request"),holder.state.value.actions)
         assertNull(holder.state.value.mfa);assertNull(holder.state.value.pending)
     }
+    @Test fun stepUpReportsStaffSignInTelemetryWithoutPersonalData()=runTest {
+        val recording=org.spaceworks.app.telemetry.RecordingTelemetry.install()
+        try {
+            val api=Fake().apply {challenge=challenge();completed=completed();me=staffUser()}
+            val holder=StaffGrantStateHolder(api,MemoryTokenStore())
+            holder.stepUp(scope);holder.verify("123456")
+            assertEquals(listOf("sign_in_started","mfa_challenge_shown","sign_in_succeeded"),recording.names)
+            assertTrue(recording.events.all {it.properties.values.none {v->v.toString().contains("fab-lab")}})
+            assertEquals("staff",recording.events.first().properties["method"])
+        } finally {org.spaceworks.app.telemetry.RecordingTelemetry.uninstall()}
+    }
     @Test fun enrolmentIsRequestedBeforeTheCode()=runTest {
         val api=Fake().apply {challenge=challenge(enrollment=true);completed=completed();me=staffUser()}
         val holder=StaffGrantStateHolder(api,MemoryTokenStore())

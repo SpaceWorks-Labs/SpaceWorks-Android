@@ -22,7 +22,9 @@ enum class TelemetryEventName(val wire:String) {
     CONSENT_UPDATED("consent_updated")
 }
 
-enum class SignInMethod(val wire:String) { PASSWORD("password"), GOOGLE("google"), APPLE("apple"), OIDC("oidc"), PHONE("phone"), PASSKEY("passkey") }
+enum class SignInMethod(val wire:String) { PASSWORD("password"), GOOGLE("google"), APPLE("apple"), OIDC("oidc"), PHONE("phone"), PASSKEY("passkey"),
+    /** Staff step-up: a second, makerspace-bound staff grant (authenticator required). */
+    STAFF("staff") }
 
 /** One typed event. Construct only through the factory functions below so names and properties stay closed. */
 class TelemetryEvent private constructor(val name:TelemetryEventName,val properties:Map<String,Any> = emptyMap()) {
@@ -40,7 +42,7 @@ class TelemetryEvent private constructor(val name:TelemetryEventName,val propert
         fun signInSucceeded(method:SignInMethod)=of(TelemetryEventName.SIGN_IN_SUCCEEDED,"method" to method.wire)
         /** [code] is the server error `code`, else the HTTP status class (`4xx`), else `network`. */
         fun signInFailed(method:SignInMethod,code:String)=of(TelemetryEventName.SIGN_IN_FAILED,"method" to method.wire,"code" to code.take(40))
-        /** [kind] is `enrollment` or `verification`. */
+        /** [kind] is `enrollment`, `verification` or `email_code` (unusual-sign-in code). */
         fun mfaChallengeShown(kind:String)=of(TelemetryEventName.MFA_CHALLENGE_SHOWN,"kind" to kind)
         val signUpStarted get()=of(TelemetryEventName.SIGN_UP_STARTED)
         val signUpCompleted get()=of(TelemetryEventName.SIGN_UP_COMPLETED)

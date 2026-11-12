@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import org.spaceworks.app.auth.*
 import org.spaceworks.app.network.*
 import org.spaceworks.app.notifications.*
@@ -166,7 +167,7 @@ class AppController(application:Application):AndroidViewModel(application) {
         viewModelScope.launch {store.installationEpoch.collect {holder.invalidateInstallation(it)}}
         // Pseudonymous telemetry identity follows the signed-in user and staff authority; cleared on sign-out.
         viewModelScope.launch {
-            holder.state.map {it.user?.id?.toString() to (it.staffAllowed && it.selected?.actions?.isNotEmpty()==true)}.distinctUntilChanged().collect {(user,staffRole)->
+            holder.state.combine(staffGrant.state) {auth,grant->auth.user?.id?.toString() to (auth.selectedId?.let(staffGrant::covers)==true && grant.actions.isNotEmpty())}.distinctUntilChanged().collect {(user,staffRole)->
                 if(user==null)org.spaceworks.app.telemetry.AppTelemetry.reset()
                 else org.spaceworks.app.telemetry.AppTelemetry.identify(org.spaceworks.app.telemetry.TelemetryUser.of(session.server.toString(),user,staffRole))
             }

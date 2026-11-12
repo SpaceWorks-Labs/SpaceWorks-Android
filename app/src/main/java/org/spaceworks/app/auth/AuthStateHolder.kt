@@ -541,7 +541,7 @@ class AuthStateHolder(private val api:AuthGateway,private val tokens:TokenStore,
         when {
             after.user!=null && before.user==null -> {signInMethod=null;AppTelemetry.track(TelemetryEvent.signInSucceeded(method))}
             failure!=null -> AppTelemetry.track(TelemetryEvent.signInFailed(method,failure))
-            after.mfa!=null && before.mfa==null -> AppTelemetry.track(TelemetryEvent.mfaChallengeShown(if(after.mfa?.enrollmentRequired==true)"enrollment" else "verification"))
+            after.mfa!=null && before.mfa==null -> AppTelemetry.track(TelemetryEvent.mfaChallengeShown(when {after.riskChallenge->"email_code";after.mfa?.enrollmentRequired==true->"enrollment";else->"verification"}))
         }
     }
 }

@@ -18,13 +18,32 @@ Logout removes returned IDs before revoking the native grant, then stops FCM and
 
 Entering demo pauses the live delivery gate synchronously. Late token callbacks and an already-running registration cannot reopen it. Local consent or a cached membership hint alone does not authorize account content: an actual tap always validates current identity from the chosen deployment. The app service's OS notification text is generic and contains no event body. Background delivery needs deployment validation before release.
 
-## Native route allowlist
+## Routing (ROUTES-SPEC)
 
-Only selected-origin HTTPS, the DEBUG validated loopback origin, and the custom scheme are accepted. Credentials, external origins, queries/fragments, encoded/control/format characters, backslashes and traversal are refused. Allowed product paths are `/makerspaces/{positiveID}/` followed by `home`, `inventory[/positiveProductID]`, `activity`, `inbox`, `profile`, `payments[/positivePaymentID]`, `bookings[/UUID]`, `events[/UUID]`, `spaces[/UUID]`, or `registrations/{positiveRegistrationID}`. Unknown maker routes fall back to authorized Inbox. These are mobile product routes, not new backend operations.
+Every link source — in-app navigation, push taps (`v >= 2`, so the server's v3 payloads route), inbox-row
+"Open update", App Links and `spaceworks://` — goes through one pure resolver,
+`org.spaceworks.app.routing.WebRouter`, over one registry (`Destination`) whose names are the web's routes
+and the analytics screen names. It accepts the web's paths in both forms: `/m/{slug}/…` (central) and
+unprefixed custom-domain paths (the push or inbox row's makerspace, or the host's makerspace for a
+verified custom domain listed in `branding/brand.json` `app_link_hosts`), plus the legacy
+`/makerspaces/{id}/…` aliases. Per-destination query parameters are kept (`section`, `period`,
+`next`, `return`, staff `event`/`space`/`booking`); everything else is dropped. Refused: other hosts,
+percent-escapes, dot segments, userinfo, control characters. A push link carrying a query falls back to
+the push makerspace's Inbox.
 
-Server links follow the backend's mobile link contract (`mobile_link_contract.py`): `/m/{slug}/member` (Home), `/m/{slug}/member/{tab}` (overview, loans, bookings, events, payments, inbox, account/membership; unknown tabs open Home), `/m/{slug}/member/events/{registration}/ticket`, `/m/{slug}/events/{token}`, `/m/{slug}/bookings/{token}` and `/m/{slug}/items/{item}`, with an optional trailing slash. Slugs resolve only against freshly authorized memberships. A v2 push link in the custom-domain form (no `/m/{slug}`) is resolved under the hint's own makerspace. `/m/{slug}/admin/notifications` additionally needs `native_staff` authority. The verified HTTPS intent filter claims only the member path patterns above; admin, control and API paths stay in the browser. Notifications with the same `event_id` replace each other. A hint's maker cannot be overridden by its link. Missing `v` means1; only v2 may supply the extended event/inbox/link fields. Future or malformed versions fall back to an authorized maker Inbox. Unknown keys never grant authority.
+Outcomes: a native screen on its registry tab; **not a member** ("Choose another space"), **paused**
+space, **feature unavailable**, **not in the app yet** (known web page without a native screen — never a
+WebView), staff **sign-in required** (the link replays after the staff step-up), **no access**; public and
+token pages open in the system browser; unknown paths fall back to the Inbox (Home when the space has no
+notifications module). Slugs are resolved after a fresh `/auth/me`; each membership's public bootstrap is
+read once per session for modules, features, custom host and paused state. `WebRouter.webPath` builds
+share links with the web's `tenantPath` rule. A link that arrives signed out is held in memory (newest
+wins) and replayed after sign-in; sign-out clears it. Links never perform an action.
 
-Every tapped hint freshly validates identity, selects the authorized scope, successfully refetches Inbox, then refetches its destination. A refused Inbox blocks target navigation. Booking/registration targets use actual returned scoped IDs; missing targets return to Activity. Current forms are retained with an explicit pending-update action. Links never automatically request, pay, book, issue, return or check in. A foreground receipt refreshes only the already selected maker's Inbox after fresh identity; it never switches the visible maker.
+App Links: the manifest claims the server host's `/m/*/member*`, `/m/*/events/*`, `/m/*/bookings/*`,
+`/m/*/items/*`; each `app_link_hosts` entry additionally claims `/member`, `/member/*`, `/events/*`,
+`/bookings/*`, `/items/*` through a generated manifest overlay (publish `assetlinks.json` on those hosts).
+Staff `/admin` paths never arrive by App Link (the server excludes them); they come from inbox rows.
 
 ## Validation
 

@@ -36,6 +36,14 @@ class AuthFlow012Test {
         override suspend fun google(clientId:String,credential:suspend(String,String)->String)=social
     }
 
+    @Test fun unusualSignInChallengeIsReportedAsAnEmailCode()=runTest {
+        val recording=org.spaceworks.app.telemetry.RecordingTelemetry.install()
+        try {
+            val api=Fake();val holder=AuthStateHolder(api,MemoryTokenStore());holder.initialize()
+            holder.signIn("member","secret")
+            assertEquals("email_code",recording.events.single {it.name.wire=="mfa_challenge_shown"}.properties["kind"])
+        } finally {org.spaceworks.app.telemetry.RecordingTelemetry.uninstall()}
+    }
     @Test fun unusualSignInAsksForTheEmailedCodeAndAnswersWithEmailCode()=runTest {
         val api=Fake();val store=MemoryTokenStore();val holder=AuthStateHolder(api,store)
         holder.initialize();holder.signIn("member","password")

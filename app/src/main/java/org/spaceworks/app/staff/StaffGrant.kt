@@ -1,5 +1,9 @@
 package org.spaceworks.app.staff
 
+import org.spaceworks.app.telemetry.AppTelemetry
+import org.spaceworks.app.telemetry.SignInMethod
+import org.spaceworks.app.telemetry.TelemetryEvent
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -97,18 +101,20 @@ class StaffGrantStateHolder(private val api:StaffGrantGateway,private val tokens
 
     /** Opens the staff sign-in step for [scope]; nothing is sent until [stepUp]. */
     fun begin(scope:MemberScope) {if(!state.value.busy)mutable.update {it.copy(pending=scope,mfa=null,enrollment=null,error=null,notice=null)}}
-    suspend fun stepUp(scope:MemberScope)=run {
+    suspend fun stepUp(scope:MemberScope)=run(report=true) {
         mutable.value=state.value.copy(pending=scope,mfa=null,enrollment=null,recoveryCodes=emptyList(),notice=null)
+        AppTelemetry.track(TelemetryEvent.signInStarted(SignInMethod.STAFF))
         val challenge=api.stepUp(scope.slug)
         if(!challenge.mfaRequired && !challenge.enrollmentRequired)throw MobileCopyException(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN)
         mutable.update {it.copy(mfa=challenge)}
+        AppTelemetry.track(TelemetryEvent.mfaChallengeShown(if(challenge.enrollmentRequired)"enrollment" else "verification"))
     }
     suspend fun enroll()=run {
         val challenge=state.value.mfa?:throw MobileCopyException(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN)
         val setup=api.enroll(challenge.challenge)
         mutable.update {it.copy(enrollment=setup)}
     }
-    suspend fun verify(code:String)=run {
+    suspend fun verify(code:String)=run(report=true) {
         val challenge=state.value.mfa?:throw MobileCopyException(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN)
         val scope=state.value.pending?:throw MobileCopyException(CoreStrings.CORE_RESTART_SIGN_IN_AND_TRY_AGAIN)
         if(code.trim().length !in 6..64)throw MobileCopyException(CoreStrings.CORE_ENTER_YOUR_AUTHENTICATOR_OR_RECOVERY_CODE)
@@ -118,6 +124,7 @@ class StaffGrantStateHolder(private val api:StaffGrantGateway,private val tokens
         withContext(NonCancellable+Dispatchers.IO) {tokens.replace(TokenPair(result.access,refresh))}
         confirm(scope)
         mutable.update {it.copy(mfa=null,enrollment=null,pending=null,recoveryCodes=result.recoveryCodes.orEmpty())}
+        AppTelemetry.track(TelemetryEvent.signInSucceeded(SignInMethod.STAFF))
     }
     fun acknowledgeRecoveryCodes(){mutable.update {it.copy(recoveryCodes=emptyList())}}
     fun cancel() {if(!state.value.busy)mutable.update {it.copy(pending=null,mfa=null,enrollment=null,error=null)}}
@@ -153,13 +160,15 @@ class StaffGrantStateHolder(private val api:StaffGrantGateway,private val tokens
         acceptedEpoch=epoch
         mutable.update {it.copy(makerspaceId=fixed.makerspace.id,actions=fixed.actions)}
     }
-    private suspend fun run(block:suspend()->Unit) {
+    /** [report]: a server refusal of the step-up is a `sign_in_failed{method: staff}` (local validation is not). */
+    private suspend fun run(report:Boolean=false,block:suspend()->Unit) {
         if(!operation.tryLock())return
         try {
             mutable.update {it.copy(busy=true,error=null)}
             block()
         } catch(cancelled:CancellationException){throw cancelled}
         catch(f:Exception) {
+            if(report && f !is MobileCopyException)AppTelemetry.track(TelemetryEvent.signInFailed(SignInMethod.STAFF,if(f is ApiFailure)f.code?:"${f.status/100}xx" else "network"))
             mutable.update {it.copy(error=when(f){is ApiFailure->text.apiFailure(f);is MobileCopyException->text.failure(f);else->text(CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)})}
         } finally {mutable.update {it.copy(busy=false)};operation.unlock()}
     }
