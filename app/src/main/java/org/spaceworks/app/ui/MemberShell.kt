@@ -199,7 +199,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 org.spaceworks.app.theme.BrandLinks.privacyURL?.takeIf {org.spaceworks.app.account.AccountLinkPolicy.safe(it)}?.let {url->
                                     BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_privacy),{runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}})}
                             })
-                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
+                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),member,{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
                             dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)

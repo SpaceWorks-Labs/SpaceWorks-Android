@@ -90,6 +90,7 @@ phase3_operations |= {
 # Backend 0.12.0 P1 features (one line per feature).
 phase3_operations |= {'api_v1_member_makerspaces_borrowing_history_list'}
 phase3_operations |= {'api_v1_member_makerspaces_waiver_retrieve','api_v1_member_makerspaces_waiver_accept_create'}
+phase3_operations |= {'api_v1_public_equipment_kits_list','api_v1_public_equipment_kit_retrieve','api_v1_public_requests_contextual_create'}
 # Operations that 0.12.0 added on an already-selected path but the app does not call.
 unused_operations={'api_v1_auth_me_partial_update'}
 base_paths=set(selected)

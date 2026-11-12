@@ -30,4 +30,18 @@ class DemoWaiverGateway:WaiverGateway {
     override suspend fun accept(scope:MemberScope):String? {delay(200);return "2026.2"}
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text))
+/** Debug-only kits and contextual requests: a submit is answered locally, a repeated operation as a replay. */
+class DemoContextualRequestGateway:ContextualRequestGateway {
+    private val kits=listOf(EquipmentKit(3,"Soldering kit",2,listOf(KitLine(11,"Soldering iron",1,true),KitLine(12,"Solder wire",1,false))),
+        EquipmentKit(4,"Workshop camera kit",1,listOf(KitLine(21,"Camera",1,true),KitLine(22,"Tripod",1,true))))
+    private val seen=mutableSetOf<java.util.UUID>()
+    override suspend fun kits(scope:MemberScope,page:Int):MemberPage<EquipmentKit> {delay(120);return MemberPage(kits,null,kits.size)}
+    override suspend fun kit(scope:MemberScope,id:Int):EquipmentKit {delay(80);return kits.first {it.id==id}}
+    override suspend fun submit(scope:MemberScope,operationId:java.util.UUID,draft:ContextualDraft):ContextualOutcome {
+        delay(250)
+        val consumableOnly=draft.kit?.lines?.all {!it.returnable}==true
+        return ContextualOutcome(consumableOnly,"pending_approval",!seen.add(operationId))
+    }
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text))
