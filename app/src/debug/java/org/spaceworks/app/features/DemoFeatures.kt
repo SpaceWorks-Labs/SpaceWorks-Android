@@ -81,4 +81,20 @@ class DemoInboxSnoozeGateway:InboxSnoozeGateway {
     override suspend fun snooze(scope:MemberScope,id:Int,until:java.time.OffsetDateTime):String? {delay(150);return until.toString()}
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text),InboxSnoozeStateHolder(DemoInboxSnoozeGateway(),text))
+/** Debug-only staff booking: the first confirm answers a moved price once, like a real 409 price_changed. */
+class DemoStaffBookingGateway:StaffBookingGateway {
+    private var moved=false
+    override suspend fun members(scope:MemberScope,spaceId:Int,page:Int):MemberPage<BookingMember> {delay(100);return MemberPage(listOf(BookingMember(21,"Meera Demo"),BookingMember(22,"Arjun Demo")),null,2)}
+    private fun quote()=BookingQuote(true,"inr",if(moved)"550.00" else "500.00",emptyList(),if(moved)"b".repeat(64) else "a".repeat(64))
+    override suspend fun quote(scope:MemberScope,spaceId:Int,memberId:Int,start:java.time.OffsetDateTime,end:java.time.OffsetDateTime):BookingQuote {delay(120);return quote()}
+    override suspend fun readiness(scope:MemberScope,spaceId:Int,memberId:Int,start:java.time.OffsetDateTime,end:java.time.OffsetDateTime)=
+        BookingReadinessView(true,listOf(ReadinessItem("room_outage","ok","No outage in this window.",emptyList())))
+    override suspend fun bookingReadiness(scope:MemberScope,bookingId:Int)=BookingReadinessView(false,listOf(ReadinessItem("machine_repair","blocked","The laser cutter is under repair.",emptyList())))
+    override suspend fun create(scope:MemberScope,spaceId:Int,memberId:Int,start:java.time.OffsetDateTime,end:java.time.OffsetDateTime,note:String,confirmation:String):StaffBookingResult {
+        delay(200)
+        if(!moved){moved=true;return StaffBookingResult.PriceChanged(quote())}
+        return StaffBookingResult.Created(99,"confirmed")
+    }
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text),InboxSnoozeStateHolder(DemoInboxSnoozeGateway(),text),StaffBookingStateHolder(DemoStaffBookingGateway(),text))

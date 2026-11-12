@@ -61,7 +61,9 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
 
 /** All physical mutations require visible review and confirmation. Camera callbacks resolve only. */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun StaffScreen(holder:StaffStateHolder,demo:Boolean,onBack:()->Unit,previewScope:org.spaceworks.app.member.MemberScope?=null,dashboard:(@Composable ()->Unit)?=null){
+@Composable fun StaffScreen(holder:StaffStateHolder,demo:Boolean,onBack:()->Unit,previewScope:org.spaceworks.app.member.MemberScope?=null,dashboard:(@Composable ()->Unit)?=null,
+    /** New booking for a member (`bookingId`=null) or readiness of an existing booking. */
+    bookingTools:(@Composable (spaceId:Int,bookingId:Int?)->Unit)?=null){
     val text=rememberMobileText()
 
     val s by holder.state.collectAsStateWithLifecycle();val work=rememberCoroutineScope()
@@ -179,9 +181,11 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
                 }
                 StaffSection.BOOKINGS->{
                     Text(s.selectedSpace?.name.orEmpty(),style=MaterialTheme.typography.titleLarge)
+                    if(holder.can("manage_bookings"))s.selectedSpace?.let{space->bookingTools?.invoke(space.id,null)}
                     if("bookings" !in s.loading&&s.bookings.isEmpty())Text(text(StaffStrings.STAFF_NO_BOOKINGS_FOR_THIS_SPACE))
                     s.bookings.forEach{row->StaffCard{Text(row.name,style=MaterialTheme.typography.titleLarge);Text("${row.startsAt} – ${row.endsAt}");Text(text(StaffStrings.STAFF_STATUS_1_S, row.status.value.replace('_',' ')))
                         row.payment?.let{Text(text(StaffStrings.STAFF_PAYMENT_1_S, it.status))}
+                        s.selectedSpace?.let{space->bookingTools?.invoke(space.id,row.id)}
                         // 0.12.0: rejecting a booking requires a reason (at most 1000 characters).
                         var reason by remember(row.id){mutableStateOf("")}
                         if(row.status.value=="pending"&&holder.can("manage_bookings"))BrandField(reason,{reason=it.take(1000)},text(StaffStrings.STAFF_REASON_FOR_REJECTION),Modifier.testTag("staff-booking-reason-${row.id}"),enabled=enabled)

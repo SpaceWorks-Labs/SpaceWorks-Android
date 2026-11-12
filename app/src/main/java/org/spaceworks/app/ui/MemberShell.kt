@@ -204,7 +204,8 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                             dashboard={
                                 insights?.let {org.spaceworks.app.insights.StaffDashboardPanel(it)}
                                 if(features!=null)org.spaceworks.app.features.StaffReportsEntry {featureRoute=org.spaceworks.app.features.FeatureRoute.STAFF_REPORTS}
-                            })
+                            },
+                            bookingTools=features?.let {f->{spaceId,bookingId->if(bookingId==null)org.spaceworks.app.features.StaffBookingPanel(f.booking,spaceId) else org.spaceworks.app.features.StaffBookingReadiness(f.booking,bookingId)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
                         showingStaff -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
                         showingPayments && paymentState?.scope?.id!=state.selectedId -> Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE),Modifier.padding(24.dp))
