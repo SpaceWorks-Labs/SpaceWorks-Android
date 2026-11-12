@@ -98,6 +98,9 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     var showingMessaging by remember(state.selectedId){mutableStateOf(false)}
     BackHandler(showingMessaging){showingMessaging=false}
     LaunchedEffect(insights,state.selectedId) {state.selected?.let {insights?.activate(MemberScope(it.id,it.slug))}}
+    val features=bundle.features
+    var featureRoute by remember(state.selectedId){mutableStateOf<org.spaceworks.app.features.FeatureRoute?>(null)}
+    LaunchedEffect(features,state.selectedId) {state.selected?.let {features?.activate(MemberScope(it.id,it.slug))}}
     var paymentRoute by remember(state.selectedId){mutableStateOf<Pair<Long,String?>?>(null)}
     val nativeCheckout=LocalNativeCheckout.current
     val nativeState=nativeCheckout?.state?.collectAsStateWithLifecycle()?.value?:NativePaymentState.Idle
@@ -107,7 +110,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     var navigationError by remember(bundle){mutableStateOf<String?>(null)}
     var homeExtra by remember(state.selectedId){mutableStateOf<Pair<Long,String>?>(null)}
     var inboxNavigationSerial by remember(state.selectedId){mutableLongStateOf(0)}
-    fun navigate(index:Int){destination=index;homeExtra=null;if(index==3)inboxNavigationSerial++}
+    fun navigate(index:Int){destination=index;homeExtra=null;featureRoute=null;if(index==3)inboxNavigationSerial++}
     LaunchedEffect(links?.delivered?.sequence,readyScope,actionState?.scope,showingStaff,showingGuide) {
         if(showingStaff || showingGuide)return@LaunchedEffect
         val route=links?.delivered?:return@LaunchedEffect
@@ -193,6 +196,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 org.spaceworks.app.theme.BrandLinks.privacyURL?.takeIf {org.spaceworks.app.account.AccountLinkPolicy.safe(it)}?.let {url->
                                     BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_privacy),{runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}})}
                             })
+                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute)) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
                             dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
@@ -246,7 +250,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                         content?.scope?.id!=state.selectedId -> Column(Modifier.padding(24.dp)) {LinearProgressIndicator(Modifier.fillMaxWidth());Text(copyText(UiStrings.MOBILE_LOADING_YOUR_MAKERSPACE))}
                         destination==0 -> MemberHome(member,state.user?.displayName.orEmpty().ifBlank {state.user?.username.orEmpty()},{navigate(1)},bundle.demo,homeExtra,onPayments=payments?.let {{showingPayments=true}},guideProgress=guidance,bookingsEnabled=actionState?.capabilities?.value?.bookableSpaces==true,onProfile={navigate(4)},usage=insights?.let {holder->{org.spaceworks.app.insights.MemberUsagePanel(holder)}})
                         destination==1 -> MemberInventory(member)
-                        destination==2 -> MemberActivityScreen(member)
+                        destination==2 -> MemberActivityScreen(member) {features?.let {org.spaceworks.app.features.ActivityFeatureEntries {featureRoute=it}}}
                         else -> MemberInboxScreen(member,notifications={bundle.push?.let {push->NotificationsPanel(push,bundle.demo,bundle.pushConfigured,state.memberships.associate {it.id to makerspaceLabel(it.slug)},bundle.pushPreview){hint->bundle.links?.offer(hint)}}},onOpenUpdate={bundle.links?.offer(it)},navigationSequence=inboxNavigationSerial)
                     }
                 }

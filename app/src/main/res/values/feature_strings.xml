@@ -1,0 +1,19 @@
+<resources>
+    <string name="history_title">"Borrowing history"</string>
+    <string name="history_help">"Everything you've borrowed here: requests, staff handouts and self-checkouts. No membership is needed to see it."</string>
+    <string name="history_all">"All"</string>
+    <string name="history_current">"Current"</string>
+    <string name="history_past">"Past"</string>
+    <string name="history_empty">"Nothing borrowed here yet."</string>
+    <string name="history_source_request">"Request"</string>
+    <string name="history_source_handout">"Staff handout"</string>
+    <string name="history_source_self_checkout">"Self-checkout"</string>
+    <string name="history_requested_on">"Requested %1$s"</string>
+    <string name="history_checked_out_on">"Checked out %1$s"</string>
+    <string name="history_due_on">"Due %1$s"</string>
+    <string name="history_returned_on">"Returned %1$s"</string>
+    <string name="history_closed_on">"Closed %1$s"</string>
+    <string name="history_line">"%1$s: %2$d requested, %3$d issued, %4$d returned"</string>
+    <string name="history_line_issues">"%1$d damaged, %2$d missing"</string>
+    <string name="history_load_more">"Load more"</string>
+</resources>

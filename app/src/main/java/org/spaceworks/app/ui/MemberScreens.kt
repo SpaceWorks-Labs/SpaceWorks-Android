@@ -239,7 +239,7 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
         }
     }
 }
-@Composable fun MemberActivityScreen(holder:MemberStateHolder) {
+@Composable fun MemberActivityScreen(holder:MemberStateHolder,entries:@Composable ColumnScope.()->Unit={}) {
     val copyText=rememberMobileText()
 
     val actions=LocalMemberActions.current
@@ -247,6 +247,8 @@ fun memberAvailability(item:InventoryItem,text:MobileText=MobileText.ENGLISH):St
     val state by holder.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
     LaunchedEffect(holder,state.scope) {kotlinx.coroutines.yield();if(holder.state.value.overview.value==null && !holder.state.value.overview.loading)holder.refreshOverview()}
     MemberPageColumn(copyText(UiStrings.MOBILE_ACTIVITY),makerspaceLabel(state.scope?.slug.orEmpty())) {
+        // Outside the membership-gated overview: account-only borrowers still reach their own history.
+        entries()
         MemberLoaded(state.overview,{scope.launch {holder.refreshOverview()}}) {overview->
             MemberSection(copyText(UiStrings.MOBILE_REQUESTS)) {if(actionState?.recentRequest!=null)BrandTextButton(copyText(UiStrings.MOBILE_TRACK_RECENT_REQUEST),{actions?.openRecentRequest()});if(overview.requests.isEmpty() && overview.serviceRequests.isEmpty())MemberEmpty()
                 overview.requests.forEach {request->MemberPanel {Text(copyText(UiStrings.MOBILE_VALUE_ITEMS,request.itemCount),style=MaterialTheme.typography.titleMedium);Text(memberStatus(request.status,copyText));Text(memberDate(request.createdAt))}}

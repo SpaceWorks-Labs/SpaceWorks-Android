@@ -87,6 +87,8 @@ phase3_operations |= {
     'api_v1_auth_login_code_resend_create','api_v1_auth_device_staff_grant_create',
     'api_v1_handles_check_retrieve','api_v1_member_profile_handle_create','api_v1_auth_mfa_create',
 }
+# Backend 0.12.0 P1 features (one line per feature).
+phase3_operations |= {'api_v1_member_makerspaces_borrowing_history_list'}
 # Operations that 0.12.0 added on an already-selected path but the app does not call.
 unused_operations={'api_v1_auth_me_partial_update'}
 base_paths=set(selected)

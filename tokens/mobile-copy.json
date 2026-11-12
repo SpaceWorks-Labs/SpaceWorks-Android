@@ -46,5 +46,11 @@
     "package": "org.spaceworks.app.insights",
     "object": "InsightsStrings",
     "output": "app/src/main/java/org/spaceworks/app/insights/InsightsStrings.kt"
+  },
+  {
+    "catalog": "app/src/main/res/values/feature_strings.xml",
+    "package": "org.spaceworks.app.features",
+    "object": "FeatureStrings",
+    "output": "app/src/main/java/org/spaceworks/app/features/FeatureStrings.kt"
   }
 ]
