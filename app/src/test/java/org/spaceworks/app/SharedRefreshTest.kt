@@ -75,7 +75,7 @@ class SharedRefreshTest {
                         assertNull(request.getHeader("Authorization"));assertNull(request.getHeader("X-Makerspace-Id"))
                         if(refreshes.incrementAndGet()!=1)return MockResponse().setResponseCode(401)
                         return MockResponse().setHeader("Content-Type","application/json").setBodyDelay(350,TimeUnit.MILLISECONDS)
-                            .setBody("""{"access":"new","refresh":"next","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
+                            .setBody("""{"access":"new","refresh":"next","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","authority":"member","staff_makerspace_id":null,"login_method":"password","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
                     }
                     if(request.getHeader("Authorization")=="Bearer old") {
                         oldRequests.countDown();check(oldRequests.await(5,TimeUnit.SECONDS))

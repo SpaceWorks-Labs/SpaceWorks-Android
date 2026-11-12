@@ -43,7 +43,7 @@ class MemberActionsGatewayTest {
             assertEquals(SubmittedRequest(REQUEST, "pending"), result)
             val request = request(server)
             assertEquals("POST", request.method); assertEquals("/api/v1/public/maker-space/requests", request.path)
-            assertEquals("reviewed-cart-attempt", request.getHeader("Idempotency-Key"))
+            assertNull(request.getHeader("Idempotency-Key"))
             val json = body(request)
             assertEquals(setOf("items", "requested_for"), json.keys)
             assertEquals(JsonPrimitive("Build a shelf"), json["requested_for"])
@@ -74,7 +74,7 @@ class MemberActionsGatewayTest {
             val result = gateway.renew(scope, "21")
             assertEquals("21", result.requestId); assertEquals(2, result.renewalCount)
             val renew = request(server)
-            assertEquals("POST", renew.method); assertEquals("/api/v1/member/makerspaces/7/loans/21/renew", renew.path); assertEquals(JsonObject(emptyMap()), body(renew))
+            assertEquals("POST", renew.method); assertEquals("/api/v1/member/makerspaces/7/loans/21/renew", renew.path); assertEquals("", renew.body.readUtf8())
         }
     }
 
@@ -110,7 +110,7 @@ class MemberActionsGatewayTest {
 
     @Test fun availabilityPreservesOpeningWindowsBookerPrivacyAndOffsets() = runBlocking {
         withGateway { gateway, server ->
-            server.enqueue(response(availability("""[{"starts_at":"2026-10-20T05:00:00Z","ends_at":"2026-10-20T05:15:00Z","booker_name":null}]""")))
+            server.enqueue(response(availability("""[{"starts_at":"2026-10-20T05:00:00Z","ends_at":"2026-10-20T05:15:00Z","booker_name":null,"tentative":false}]""")))
             val result = gateway.availability(scope, SPACE, start, end)
             assertEquals(1, result.booked!!.size); assertNull(result.booked.single().bookerName)
             assertEquals("2026-10-20T05:00Z", result.booked.single().startsAt)
@@ -300,8 +300,8 @@ class MemberActionsGatewayTest {
         }
     }
 
-    private fun availability(rows: String) = """{"public_token":"$SPACE","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","timezone":"Asia/Kolkata","opening_intervals":[{"starts_at":"2026-10-20T04:00:00Z","ends_at":"2026-10-20T12:00:00Z"}],"availability":$rows}"""
-    private fun booking(status: String) = """{"public_token":"$BOOKING","space_name":"Studio","timezone":"Asia/Kolkata","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","status":"$status","cancellation_cutoff_at":"2026-10-19T04:30:00Z","can_cancel":false,"confirmation_available":false}"""
+    private fun availability(rows: String) = """{"public_token":"$SPACE","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","timezone":"Asia/Kolkata","opening_intervals":[{"starts_at":"2026-10-20T04:00:00Z","ends_at":"2026-10-20T12:00:00Z"}],"availability":$rows,"unavailable":[]}"""
+    private fun booking(status: String) = """{"public_token":"$BOOKING","space_name":"Studio","timezone":"Asia/Kolkata","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","status":"$status","cancellation_cutoff_at":"2026-10-19T04:30:00Z","can_cancel":false,"confirmation_available":false,"can_checkout":false,"decision_reason":"","departed_at":null,"departure_outcome":null,"hosts_event":null,"machine_time":false}"""
     private fun preferences(enabled: Boolean) = """{"cells":[{"feature":"events","channel":"email","enabled":$enabled,"available":false,"mandatory_events":["account_recovery"]}]}"""
     companion object {
         private const val REQUEST = "00000000-0000-0000-0000-000000000081"
@@ -309,7 +309,7 @@ class MemberActionsGatewayTest {
         private const val BOOKING = "00000000-0000-0000-0000-000000000083"
         private const val EVENT = "00000000-0000-0000-0000-000000000084"
         private const val QUESTION = """{"id":"safety","label":"Read the safety guide?","type":"yes_no","required":true,"options":[]}"""
-        private val SPACE_JSON = """{"public_token":"$SPACE","name":"Studio","kind":"meeting","description":"A quiet room.","capacity":4,"location":"Workshop","image_url":"","approval_mode":"approve","custom_form":[$QUESTION],"show_public_availability":false,"show_public_booker_names":false}"""
-        private val EVENT_JSON = """{"registration_audience":"invite","category":null,"tags":[],"ticket_types":[{"id":15,"name":"Member ticket","amount":"100.00","audience":"members","spots_left":2}],"promo_codes_enabled":true,"ticket_selection_required":true,"public_token":"$EVENT","title":"Build a shelf","description":"Make together.","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","location":"Workshop","location_kind":"indoor","custom_form":[$QUESTION],"capacity":12,"payment_amount":"123.45","currency":"INR","availability":"Available","registration_requires_approval":true,"effective_registration_cutoff_at":null,"registration_open":true,"image_url":null,"status":"published","organizers":[],"series":null,"participating_organizations":[],"show_registration_count":false}"""
+        private val SPACE_JSON = """{"public_token":"$SPACE","name":"Studio","kind":"meeting","description":"A quiet room.","capacity":4,"location":"Workshop","image_url":"","approval_mode":"approve","custom_form":[$QUESTION],"show_public_availability":false,"show_public_booker_names":false,"photos":[]}"""
+        private val EVENT_JSON = """{"registration_audience":"invite","category":null,"tags":[],"ticket_types":[{"id":15,"name":"Member ticket","amount":"100.00","audience":"members","spots_left":2}],"promo_codes_enabled":true,"ticket_selection_required":true,"public_token":"$EVENT","title":"Build a shelf","description":"Make together.","starts_at":"2026-10-20T04:30:00Z","ends_at":"2026-10-20T05:30:00Z","location":"Workshop","location_kind":"indoor","custom_form":[$QUESTION],"capacity":12,"payment_amount":"123.45","currency":"INR","availability":"Available","registration_requires_approval":true,"effective_registration_cutoff_at":null,"registration_open":true,"image_url":null,"status":"published","organizers":[],"series":null,"participating_organizations":[],"show_registration_count":false,"accent_preset":"","audience_label":null,"delivery_mode":null,"indexable":false,"registration_count":null,"submission_stages":[],"timezone_name":"","venue_address":"","venue_map_url":"","website":null}"""
     }
 }

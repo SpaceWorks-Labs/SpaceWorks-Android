@@ -40,5 +40,6 @@
   "staff_grants_enabled": false,
   "staff_permissions": [],
   "staff_tools_enabled": false,
-  "website_enabled": false
+  "website_enabled": false,
+  "machine": null
 }

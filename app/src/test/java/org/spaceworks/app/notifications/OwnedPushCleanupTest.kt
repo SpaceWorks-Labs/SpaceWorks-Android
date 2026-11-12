@@ -91,7 +91,7 @@ class OwnedPushCleanupTest {
             // Initialization is anonymous and local here; every attempted logout still reaches
             // the real generated gateway, so zero HTTP calls is a meaningful refusal assertion.
             val api = object : AuthGateway by live {
-                override suspend fun config() = PublicConfig(false, 100)
+                override suspend fun config() = DemoWire.config(false,100)
             }
             val holder = AuthStateHolder(api, tokens, readSelection = { selection }, saveSelection = { selection = it })
             session.bindIdentityEpoch { holder.acceptedInstallationEpoch }
@@ -157,7 +157,7 @@ class OwnedPushCleanupTest {
             session.bindIdentityEpoch { holder.acceptedInstallationEpoch }
         }
         suspend fun initialize() {
-            server.enqueue(json("""{"email_enabled":false,"public_image_max_bytes":100}"""))
+            server.enqueue(json("""{"platform_telemetry":{"pageview":{"provider":"none","site_id":"","endpoint":""},"replay":{"provider":"none","site_id":"","endpoint":""},"diagnostics":{"sentry":{"enabled":false,"dsn":"","sample_rate":0},"firebase_performance":{"enabled":false,"sample_rate":0}},"firebase":{"api_key":"","auth_domain":"","project_id":"","app_id":"","messaging_sender_id":"","measurement_id":"","vapid_public_key":""}},"platform_telemetry_legacy_allowed":false,"passkeys_enabled":false,"landing_enabled":false,"email_enabled":false,"public_image_max_bytes":100}"""))
             server.enqueue(json(USER))
             holder.initialize()
             assertEquals(originalEpoch, holder.acceptedInstallationEpoch)
@@ -171,6 +171,6 @@ class OwnedPushCleanupTest {
 
     private companion object {
         fun json(value: String) = MockResponse().setHeader("Content-Type", "application/json").setBody(value)
-        const val USER = """{"session_authority":"member","id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":7,"slug":"workshop","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
+        const val USER = """{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":7,"slug":"workshop","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","tracks":["community"],"actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
     }
 }

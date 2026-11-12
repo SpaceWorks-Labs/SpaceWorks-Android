@@ -13,7 +13,7 @@ private class AccountAPI:AuthGateway {
     var failure:Exception?=null
     var gate:CompletableDeferred<Unit>?=null
     var signup:List<String>?=null
-    override suspend fun config()=PublicConfig(true,100)
+    override suspend fun config()=DemoWire.config(true,100)
     override suspend fun login(username:String,password:String):DeviceLoginResult=error("Unused")
     override suspend fun enroll(challenge:String):MFAEnrollment=error("Unused")
     override suspend fun verify(challenge:String,code:String,enrollment:Boolean):MFACompleted=error("Unused")

@@ -48,5 +48,18 @@
   "participating_organizations": [],
   "report_features": [],
   "show_registration_count": false,
-  "staff_permissions": []
+  "staff_permissions": [],
+  "accent_preset": "maker_teal",
+  "audience_organizations": [],
+  "can_duplicate": false,
+  "currency": "",
+  "delivery_mode": "in_person",
+  "join_url": null,
+  "join_url_set": false,
+  "listing": "listed",
+  "makerspace_slug": "",
+  "my_limit": null,
+  "page_state": "live",
+  "venue_address": "",
+  "venue_map_url": ""
 }

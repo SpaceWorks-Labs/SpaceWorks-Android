@@ -10,13 +10,13 @@ import org.spaceworks.app.auth.*
 import org.spaceworks.app.network.*
 import org.spaceworks.generated.model.*
 
-private const val EPOCH_USER="""{"session_authority":"member","id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
+private const val EPOCH_USER="""{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","tracks":["community"],"actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
 private class EpochAuth:AuthGateway {
     var entered:CompletableDeferred<Unit>?=null
     var release:CompletableDeferred<Unit>?=null
     var failure:Exception?=null
     var logouts=0
-    override suspend fun config()=PublicConfig(false,100)
+    override suspend fun config()=DemoWire.config(false,100)
     override suspend fun login(username:String,password:String):DeviceLoginResult=error("unused")
     override suspend fun enroll(challenge:String):MFAEnrollment=error("unused")
     override suspend fun verify(challenge:String,code:String,enrollment:Boolean):MFACompleted=error("unused")

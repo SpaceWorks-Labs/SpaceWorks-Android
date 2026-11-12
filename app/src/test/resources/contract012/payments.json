@@ -1,0 +1,57 @@
+[
+ {
+  "id": 1,
+  "subject_type": "loan_rental",
+  "subject_label": "x",
+  "amount": "1.00",
+  "currency": "x",
+  "due_date": "x",
+  "due_state": "x",
+  "checkout_url": "x",
+  "online_payment_available": false,
+  "settlement": {
+   "method": "x",
+   "received_at": "2026-11-12T10:00:00Z",
+   "reference": "x"
+  },
+  "refunded_amount": 1.0,
+  "refunds": [],
+  "refund_case": {
+   "id": 1,
+   "kind": "due",
+   "status": "open",
+   "decision_note": "x",
+   "withdrawable": false,
+   "created_at": "2026-11-12T10:00:00Z",
+   "decided_at": "2026-11-12T10:00:00Z"
+  },
+  "refund_requestable": false,
+  "created_at": "2026-11-12T10:00:00Z",
+  "offline_collection": {
+   "upi": {
+    "vpa": "x",
+    "payee_name": "x",
+    "amount": "x",
+    "currency": "x",
+    "reference": "x",
+    "uri": "x"
+   },
+   "instructions": "x",
+   "instructions_unit": {
+    "id": 1,
+    "name": "x",
+    "code": "x"
+   },
+   "claim": {
+    "id": 1,
+    "method": "upi",
+    "reference": "x",
+    "paid_on": "2026-11-12",
+    "status": "submitted",
+    "decision_note": "x",
+    "created_at": "2026-11-12T10:00:00Z"
+   },
+   "claimable": false
+  }
+ }
+]

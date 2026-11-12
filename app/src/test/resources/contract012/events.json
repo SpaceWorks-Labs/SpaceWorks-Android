@@ -1,0 +1,58 @@
+[
+ {
+  "participating_organizations": [],
+  "audience_label": "x",
+  "registration_audience": "members",
+  "category": {},
+  "tags": [],
+  "ticket_types": [],
+  "promo_codes_enabled": false,
+  "ticket_selection_required": false,
+  "accent_preset": "x",
+  "timezone_name": "x",
+  "website": {
+   "revision": 1,
+   "released": false,
+   "inherited": false,
+   "sections": [
+    {
+     "kind": "judges",
+     "slug": "x",
+     "title": "x",
+     "image_url": "x",
+     "image_alt_text": "x"
+    }
+   ],
+   "sessions": [],
+   "section_order": [
+    "EDITORIAL"
+   ]
+  },
+  "delivery_mode": "in_person",
+  "indexable": false,
+  "submission_stages": [],
+  "public_token": "00000000-0000-0000-0000-000000000001",
+  "title": "x",
+  "description": "x",
+  "starts_at": "2026-11-12T10:00:00Z",
+  "ends_at": "2026-11-12T10:00:00Z",
+  "location": "x",
+  "venue_address": "x",
+  "venue_map_url": "x",
+  "location_kind": "indoor",
+  "custom_form": null,
+  "capacity": 1,
+  "show_registration_count": false,
+  "registration_count": 1,
+  "payment_amount": "1.00",
+  "currency": "x",
+  "availability": "Available",
+  "registration_requires_approval": false,
+  "effective_registration_cutoff_at": "2026-11-12T10:00:00Z",
+  "registration_open": false,
+  "image_url": "https://example.invalid/x",
+  "status": "published",
+  "organizers": [],
+  "series": {}
+ }
+]

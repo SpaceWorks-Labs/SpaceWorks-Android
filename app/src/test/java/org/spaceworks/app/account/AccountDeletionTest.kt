@@ -10,7 +10,7 @@ import org.spaceworks.app.network.*
 import java.util.concurrent.TimeUnit
 
 private const val BLOCKER="""{"code":"unpaid_charges","makerspace_id":7,"makerspace_slug":"workshop","makerspace_member_url":null,"organization_id":null,"organization_url":null,"count":2,"detail":"Two charges need payment."}"""
-private const val ME="""{"session_authority":"member","id":1,"username":"m","email":"m@example.invalid","display_name":"M","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[]}"""
+private const val ME="""{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"m","email":"m@example.invalid","display_name":"M","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[]}"""
 
 class AccountDeletionTest {
     private fun json(body:String,code:Int=200)=MockResponse().setResponseCode(code).setHeader("Content-Type","application/json").setBody(body)
@@ -24,7 +24,7 @@ class AccountDeletionTest {
     private fun RecordedRequest.json()=Json.parseToJsonElement(body.readUtf8()).jsonObject
 
     @Test fun previewProjectsBlockersAndReauthWithoutMakerspaceHeader()=withGateway {gateway,server->
-        server.enqueue(json("""{"deletable":false,"restorable":true,"restore_reason":"Restorable for 90 days.","blockers":[$BLOCKER,{"code":"future_code","makerspace_id":null,"makerspace_slug":null,"organization_id":3,"organization_url":"https://example.invalid/org/3","count":1,"detail":"Server says so."}],"reauth":{"required":true,"methods":["password","totp","google"]}}"""))
+        server.enqueue(json("""{"deletable":false,"restorable":true,"restore_reason":"Restorable for 90 days.","blockers":[$BLOCKER,{"code":"future_code","makerspace_id":null,"makerspace_slug":null,"organization_id":3,"organization_url":"https://example.invalid/org/3","count":1,"detail":"Server says so.","makerspace_member_url":null}],"reauth":{"required":true,"methods":["password","totp","google"]}}"""))
         val preview=gateway.preview()
         assertFalse(preview.deletable);assertTrue(preview.reauthRequired);assertEquals(listOf("password","totp","google"),preview.methods)
         assertEquals(AccountFixDestination.PAYMENTS,preview.blockers[0].fix);assertEquals(2,preview.blockers[0].count)
@@ -40,7 +40,7 @@ class AccountDeletionTest {
     }
     @Test fun wrongPasswordWithValidIdentityIsAVerificationFailureNotSessionLoss()=withGateway {gateway,server->
         server.enqueue(json("""{"detail":"Identity verification failed."}""",401))
-        server.enqueue(json("""{"access":"a2","refresh":"r2","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.example","environment":"development","status":"active","attested_at":"2026-10-17T00:00:00Z","last_used_at":"2026-10-17T00:00:00Z","created_at":"2026-10-17T00:00:00Z"}}"""))
+        server.enqueue(json("""{"access":"a2","refresh":"r2","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.example","environment":"development","status":"active","authority":"member","staff_makerspace_id":null,"login_method":"password","attested_at":"2026-10-17T00:00:00Z","last_used_at":"2026-10-17T00:00:00Z","created_at":"2026-10-17T00:00:00Z"}}"""))
         server.enqueue(json("""{"detail":"Identity verification failed."}""",401))
         server.enqueue(json(ME))
         try {gateway.password("wrong",null);fail()}catch(f:ApiFailure){assertEquals("reauth_failed",f.code);assertEquals(0,f.status)}

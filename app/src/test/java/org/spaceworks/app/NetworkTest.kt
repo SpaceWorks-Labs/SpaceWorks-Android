@@ -24,7 +24,7 @@ class NetworkTest {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "0")
                 .setBody("""{"detail":"Rotation unavailable."}"""))
-            server.enqueue(MockResponse().setBody("""{"access":"bogus","refresh":"replayed"}"""))
+            server.enqueue(MockResponse().setBody("""{"access":"bogus","refresh":"replayed","device_grant":{"app_id":"","attested_at":"2026-10-16T00:00:00Z","authority":"member","created_at":"2026-10-16T00:00:00Z","environment":"","id":"00000000-0000-4000-8000-000000000000","last_used_at":"2026-10-16T00:00:00Z","login_method":"","platform":"apple","staff_makerspace_id":null,"status":""}}"""))
             val store = MemoryTokenStore().apply { replace(TokenPair("old", "single-use")) }
             try { ApiSession(server.url("/"), store).coordinator.refresh("old",store.snapshot().epoch); fail("Must fail without replay") }
             catch (failure: ApiFailure) {
@@ -69,7 +69,7 @@ class NetworkTest {
                     request.path=="/api/v1/auth/device/refresh" -> {
                         calls.incrementAndGet()
                         assertTrue(request.body.readUtf8().contains("old-refresh"))
-                        MockResponse().setBody("""{"access":"new-access","refresh":"new-refresh","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
+                        MockResponse().setBody("""{"access":"new-access","refresh":"new-refresh","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","authority":"member","staff_makerspace_id":null,"login_method":"password","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
                     }
                     request.getHeader("Authorization")=="Bearer old-access" -> {
                         oldRequests.incrementAndGet();firstWave.countDown()

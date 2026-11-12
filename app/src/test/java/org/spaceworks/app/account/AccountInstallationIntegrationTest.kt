@@ -27,10 +27,10 @@ class AccountInstallationIntegrationTest {
     private class Identity:AuthGateway {
         var entered:CompletableDeferred<Unit>?=null;var release:CompletableDeferred<Unit>?=null
         var reads=0
-        override suspend fun config()=PublicConfig(false,100)
+        override suspend fun config()=DemoWire.config(false,100)
         override suspend fun me():AuthUserPayload {
             reads++;entered?.complete(Unit);release?.await()
-            return AuthUserPayload("member",1,"member","member@example.invalid","Member","",true,"member",false,false,emptyList())
+            return org.spaceworks.app.testsupport.Payloads.testUser("member",1,"member","member@example.invalid","Member","",true,"member",false,false,emptyList())
         }
         override suspend fun login(username:String,password:String):DeviceLoginResult=error("Unexpected login")
         override suspend fun enroll(challenge:String):MFAEnrollment=error("Unexpected enrollment")

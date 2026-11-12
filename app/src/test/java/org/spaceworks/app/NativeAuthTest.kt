@@ -11,14 +11,14 @@ import org.spaceworks.app.auth.*
 import org.spaceworks.app.network.*
 import org.spaceworks.generated.model.*
 
-private const val NATIVE_USER="""{"session_authority":"member","id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","actions":["issue_hardware"],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
-private const val GRANT="""{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.example","environment":"development","status":"active","attested_at":"2026-10-17T00:00:00Z","last_used_at":"2026-10-17T00:00:00Z","created_at":"2026-10-17T00:00:00Z"}"""
+private const val NATIVE_USER="""{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","tracks":["community"],"actions":["issue_hardware"],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
+private const val GRANT="""{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.example","environment":"development","status":"active","authority":"member","staff_makerspace_id":null,"login_method":"password","attested_at":"2026-10-17T00:00:00Z","last_used_at":"2026-10-17T00:00:00Z","created_at":"2026-10-17T00:00:00Z"}"""
 
-private fun nativeConfig(password:Boolean=true,phone:Boolean=true,google:String?="android-audience",minimum:String?=null)=PublicConfig(false,100,
-    native=NativeConfig(NativeMinVersion(minimum,null),NativeProviders(password,phone,google?.let {NativeGoogle(it,"ios-audience")},null,emptyList())))
+private fun nativeConfig(password:Boolean=true,phone:Boolean=true,google:String?="android-audience",minimum:String?=null)=DemoWire.config(false,100).copy(
+    native=DemoWire.native(NativeMinVersion(minimum,null),NativeProviders(password,phone,google?.let {NativeGoogle(it,"ios-audience")},null,emptyList())))
 
 private fun grant():DeviceGrant {val at=java.time.OffsetDateTime.parse("2026-10-17T00:00:00Z")
-    return DeviceGrant(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),"android","org.example","development","active",at,at,at)}
+    return DemoWire.grant("org.example")}
 private class NativeFakeAuth:AuthGateway {
     var config=nativeConfig()
     var who=Json.decodeFromString<AuthUserPayload>(NATIVE_USER)
@@ -60,15 +60,6 @@ class NativeAuthTest {
         assertFalse(holder.state.value.passwordEnabled);assertFalse(holder.state.value.phoneEnabled);assertNull(holder.state.value.googleClientId)
         api.config=nativeConfig();holder.initialize()
         assertTrue(holder.state.value.passwordEnabled);assertTrue(holder.state.value.phoneEnabled);assertEquals("android-audience",holder.state.value.googleClientId)
-    }
-    @Test fun staffToolsRequireNativeStaffSessionAuthority()=runTest {
-        val api=NativeFakeAuth();val store=MemoryTokenStore().apply {replace(TokenPair("access","refresh"))}
-        val holder=AuthStateHolder(api,store);holder.initialize()
-        assertFalse(holder.state.value.staffAllowed)
-        api.who=api.who.copy(sessionAuthority="native_staff");holder.foreground()
-        assertTrue(holder.state.value.staffAllowed)
-        api.who=api.who.copy(sessionAuthority="staff");holder.foreground()
-        assertFalse(holder.state.value.staffAllowed)
     }
     @Test fun phoneSignInReusesTheStartedChallengeAndInstallsDeviceTokens()=runTest {
         var clock=1_000L
@@ -153,7 +144,7 @@ class NativeAuthTest {
         try {failing.attest("c");fail()}catch(f:AuthMessage){assertEquals("This device could not verify the app. Try again.",f.message)}
         // A Debug emulator always uses the development proof, never Play Integrity.
         val debug=NativeAttestation(DevelopmentAttestation(true,true),{throw AssertionError("integrity used")})
-        assertTrue(debug.attest("c") is DeviceAttestationPayload.JsonElementValue)
+        assertTrue(debug.attest("c") is DeviceAttestationPayload.DeviceAttestationPayloadAnyOf2Value)
     }
     @Test fun logoutAllCleansPushThenRevokesEverySessionWithoutMakerspaceHeader()=runBlocking {
         MockWebServer().use {server->
@@ -178,7 +169,7 @@ class NativeAuthTest {
             server.enqueue(MockResponse().setBody("""{"access":"a","refresh":"r","device_grant":{"id":"00000000-0000-0000-0000-000000000001"},"user":{},"outcome":"authenticated"}"""))
             val provider=NativeOidc("oidc:campus","Campus SSO","campus-client","https://sso.example")
             val result=gateway.oidc(provider) {p,nonce->assertEquals("campus-client",p.clientId);assertEquals("server-nonce",nonce);"oidc-id-token"}
-            assertEquals("r",result.refresh)
+            assertEquals("r",(result as SocialLoginResult.SocialLoginResponseValue).value.refresh)
             server.takeRequest()
             val nonce=Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
             assertEquals("oidc:campus",nonce["provider"]!!.jsonPrimitive.content);assertEquals("c1",nonce["challenge"]!!.jsonPrimitive.content)
@@ -191,13 +182,13 @@ class NativeAuthTest {
     @Test fun oidcSignInInstallsDeviceSessionOnlyForPublishedProviders()=runTest {
         val provider=NativeOidc("oidc:campus","Campus SSO","campus-client","https://sso.example")
         val api=object:AuthGateway by NativeFakeAuth() {
-            val inner=NativeFakeAuth().apply {config=PublicConfig(false,100,native=NativeConfig(NativeMinVersion(null,null),NativeProviders(true,false,null,null,listOf(provider))))}
+            val inner=NativeFakeAuth().apply {config=DemoWire.config(false,100).copy(native=DemoWire.native(NativeMinVersion(null,null),NativeProviders(true,false,null,null,listOf(provider))))}
             override val nativeSocialReady=true
             override suspend fun config()=inner.config
             override suspend fun me()=inner.who
-            override suspend fun oidc(provider:NativeOidc,credential:suspend(NativeOidc,String)->String):SocialLoginResponse {
+            override suspend fun oidc(provider:NativeOidc,credential:suspend(NativeOidc,String)->String):SocialLoginResult {
                 assertEquals("id",credential(provider,"n"))
-                return SocialLoginResponse("oidc-access",emptyMap(),"authenticated","oidc-refresh",mapOf("id" to JsonPrimitive("00000000-0000-0000-0000-000000000001")))
+                return SocialLoginResult.SocialLoginResponseValue(SocialLoginResponse("oidc-access",emptyMap(),"authenticated","oidc-refresh",mapOf("id" to JsonPrimitive("00000000-0000-0000-0000-000000000001"))))
             }
         }
         val store=MemoryTokenStore();val holder=AuthStateHolder(api,store);holder.initialize()

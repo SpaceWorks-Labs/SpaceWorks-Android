@@ -14,5 +14,9 @@
   "cancelled_at": null,
   "no_longer_eligible": false,
   "restore_until": null,
-  "status_before_cancel": ""
+  "status_before_cancel": "",
+  "attendance_reply": null,
+  "is_crew": false,
+  "pay_by": null,
+  "ticket_type_name": null
 }

@@ -1,0 +1,18 @@
+{
+ "count": 1,
+ "next": null,
+ "previous": null,
+ "results": [
+  {
+   "id": 1,
+   "payment": 1,
+   "number": "x",
+   "kind": "bill",
+   "issued_at": "2026-11-12T10:00:00Z",
+   "money_at": "2026-11-12T10:00:00Z",
+   "amount": "1.00",
+   "currency": "x",
+   "status": "x"
+  }
+ ]
+}

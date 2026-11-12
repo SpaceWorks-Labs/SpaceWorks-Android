@@ -71,7 +71,7 @@ class GeneratedPaymentsGateway(
     }
     override suspend fun documents(scope:MemberScope,page:Int):PaymentDocumentPage {
         require(page>0)
-        val value=api(scope).apiV1MemberMakerspacesPaymentDocumentsRetrieve(scope.id,page).requireBody()
+        val value=api(scope).apiV1MemberMakerspacesPaymentDocumentsRetrieve(scope.id,page=page).requireBody()
         return PaymentDocumentPage(value.results.map {PaymentDocument(it.id.toString(),it.payment.toString(),it.number,it.kind.value,it.amount.toPlainString(),it.currency,it.issuedAt.toString())},
             PaymentDocumentLinks.next(value.next?.toString(),page,scope,session.server),value.count)
     }

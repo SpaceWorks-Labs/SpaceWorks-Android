@@ -20,7 +20,7 @@ class LogoutEntryOwnershipTest {
             val session=ApiSession(server.url("/"),tokens);session.bindIdentityEpoch {null}
             val gateway=GeneratedAuthGateway(session,"org.example",EnvironmentEnum.development,DevelopmentAttestation(true,true))
             tokens.replace(TokenPair("new","new-r"))
-            server.enqueue(MockResponse().setBody(Json.encodeToString(AuthUserPayload("member",2,"new","new@example.invalid","New","",true,"member",false,false,emptyList()))))
+            server.enqueue(MockResponse().setBody(Json.encodeToString(org.spaceworks.app.testsupport.Payloads.testUser("member",2,"new","new@example.invalid","New","",true,"member",false,false,emptyList()))))
             assertTrue(runCatching {gateway.me(expected)}.exceptionOrNull() is java.io.IOException)
             assertNull(server.takeRequest(200,TimeUnit.MILLISECONDS));assertEquals(TokenPair("new","new-r"),tokens.read())
         }
@@ -39,8 +39,8 @@ class LogoutEntryOwnershipTest {
             val tokens=MemoryTokenStore().apply {replace(TokenPair("old","old-r"))}
             val gateway=GeneratedAuthGateway(ApiSession(server.url("/"),tokens),"org.example",EnvironmentEnum.development,DevelopmentAttestation(true,true))
             val holder=AuthStateHolder(gateway,tokens)
-            server.enqueue(MockResponse().setBody("{\"email_enabled\":false,\"public_image_max_bytes\":100}"))
-            server.enqueue(MockResponse().setBody(Json.encodeToString(AuthUserPayload("member",1,"old","old@example.invalid","Old","",true,"member",false,true,emptyList()))))
+            server.enqueue(MockResponse().setBody("{\"platform_telemetry\":{\"pageview\":{\"provider\":\"none\",\"site_id\":\"\",\"endpoint\":\"\"},\"replay\":{\"provider\":\"none\",\"site_id\":\"\",\"endpoint\":\"\"},\"diagnostics\":{\"sentry\":{\"enabled\":false,\"dsn\":\"\",\"sample_rate\":0},\"firebase_performance\":{\"enabled\":false,\"sample_rate\":0}},\"firebase\":{\"api_key\":\"\",\"auth_domain\":\"\",\"project_id\":\"\",\"app_id\":\"\",\"messaging_sender_id\":\"\",\"measurement_id\":\"\",\"vapid_public_key\":\"\"}},\"platform_telemetry_legacy_allowed\":false,\"passkeys_enabled\":false,\"landing_enabled\":false,\"email_enabled\":false,\"public_image_max_bytes\":100}"))
+            server.enqueue(MockResponse().setBody(Json.encodeToString(org.spaceworks.app.testsupport.Payloads.testUser("member",1,"old","old@example.invalid","Old","",true,"member",false,true,emptyList()))))
             holder.initialize();server.takeRequest();server.takeRequest()
             tokens.replace(TokenPair("new","new-r"));assertTrue(holder.invalidateInstallation(tokens.snapshot().epoch))
             server.enqueue(MockResponse().setBody("{\"detail\":\"Password changed\"}"))
@@ -61,8 +61,8 @@ class LogoutEntryOwnershipTest {
             val holder=AuthStateHolder(gateway,tokens,onSessionEnded={
                 if(!replaced) {replaced=true;tokens.replace(TokenPair("new","new-r"))}
             })
-            server.enqueue(MockResponse().setBody("{\"email_enabled\":false,\"public_image_max_bytes\":100}"))
-            server.enqueue(MockResponse().setBody(Json.encodeToString(AuthUserPayload("member",1,"old","old@example.invalid","Old","",true,"member",false,forcedPassword,emptyList()))))
+            server.enqueue(MockResponse().setBody("{\"platform_telemetry\":{\"pageview\":{\"provider\":\"none\",\"site_id\":\"\",\"endpoint\":\"\"},\"replay\":{\"provider\":\"none\",\"site_id\":\"\",\"endpoint\":\"\"},\"diagnostics\":{\"sentry\":{\"enabled\":false,\"dsn\":\"\",\"sample_rate\":0},\"firebase_performance\":{\"enabled\":false,\"sample_rate\":0}},\"firebase\":{\"api_key\":\"\",\"auth_domain\":\"\",\"project_id\":\"\",\"app_id\":\"\",\"messaging_sender_id\":\"\",\"measurement_id\":\"\",\"vapid_public_key\":\"\"}},\"platform_telemetry_legacy_allowed\":false,\"passkeys_enabled\":false,\"landing_enabled\":false,\"email_enabled\":false,\"public_image_max_bytes\":100}"))
+            server.enqueue(MockResponse().setBody(Json.encodeToString(org.spaceworks.app.testsupport.Payloads.testUser("member",1,"old","old@example.invalid","Old","",true,"member",false,forcedPassword,emptyList()))))
             holder.initialize()
             assertNotNull(holder.state.value.user)
             assertEquals("/api/v1/config",server.takeRequest(2,TimeUnit.SECONDS)!!.path)

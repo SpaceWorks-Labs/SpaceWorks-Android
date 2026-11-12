@@ -28,5 +28,6 @@
   "source": "staff",
   "status": "active",
   "target_label": "Sample precision toolkit",
-  "target_type": "product"
+  "target_type": "product",
+  "request_id": 0
 }

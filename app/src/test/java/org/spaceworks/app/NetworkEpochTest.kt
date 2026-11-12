@@ -50,7 +50,7 @@ class NetworkEpochTest {
         }
         MockWebServer().use {server->
             server.dispatcher=object:Dispatcher(){override fun dispatch(request:RecordedRequest):MockResponse =
-                if(request.path.orEmpty().contains("/device/refresh"))MockResponse().setHeader("Content-Type","application/json").setBody("""{"access":"rotated-old","refresh":"rotated-refresh","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
+                if(request.path.orEmpty().contains("/device/refresh"))MockResponse().setHeader("Content-Type","application/json").setBody("""{"access":"rotated-old","refresh":"rotated-refresh","device_grant":{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"org.spaceworks.app","environment":"development","status":"active","authority":"member","staff_makerspace_id":null,"login_method":"password","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}}""")
                 else MockResponse().setResponseCode(401).setHeader("Content-Type","application/json").setBody("""{"detail":"Expired"}""")}
             server.start();val session=ApiSession(server.url("/"),store){"7"}
             val result=runCatching {session.auth.apiV1AuthChangePasswordCreate(ChangePassword("old","replacement"))}

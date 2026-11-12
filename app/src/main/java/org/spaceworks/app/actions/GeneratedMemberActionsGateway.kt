@@ -36,8 +36,10 @@ class GeneratedMemberActionsGateway(private val session: ApiSession,private val 
         val items = lines.map { require(it.quantity in 1..99) { text(CoreStrings.CORE_CHOOSE_A_QUANTITY_FROM_1_TO_99) }; RequestItemInput(positiveID(it.productId), it.quantity) }
         require(items.map { it.productId }.distinct().size == items.size) { text(CoreStrings.CORE_EACH_PRODUCT_CAN_APPEAR_ONLY_ONCE_IN_THE_REQUEST) }
         require(idempotencyKey == null || (idempotencyKey.isNotBlank() && idempotencyKey.length <= 256 && idempotencyKey.all { it in '!'..'~' })) { text(CoreStrings.CORE_THE_REQUEST_REFERENCE_IS_INVALID) }
+        // 0.12.0 removed the `Idempotency-Key` header from this route and the backend no longer reads
+        // it, so the reviewed-attempt key stays local (see NATIVE-CONTRACT backend gaps).
         val result = api(PublicRequestsApi::class.java, scope).apiV1PublicRequestsCreate(
-            makerspaceSlug = scope.slug, requestSubmit = RequestSubmit(items = items, requestedFor = purpose), idempotencyKey = idempotencyKey).requireBody()
+            makerspaceSlug = scope.slug, publicRequestSubmitSchema = PublicRequestSubmitSchema(items = items, requestedFor = purpose)).requireBody()
         return SubmittedRequest(result.publicToken.toString(), result.status)
     }
     override suspend fun requestStatus(scope: MemberScope, publicToken: String): RequestStatus {
@@ -45,7 +47,7 @@ class GeneratedMemberActionsGateway(private val session: ApiSession,private val 
         return RequestStatus(result.status, result.createdAt.toString(), result.items.map { RequestedProduct(it.productName, it.requestedQuantity) })
     }
     override suspend fun renew(scope: MemberScope, requestId: String): LoanRenewalResult {
-        val result = api(LoansApi::class.java, scope).apiV1MemberMakerspacesLoansRenewCreate(id = positiveID(requestId), makerspaceId = scope.id, requestBody = emptyMap()).requireBody()
+        val result = api(LoansApi::class.java, scope).apiV1MemberMakerspacesLoansRenewCreate(id = positiveID(requestId), makerspaceId = scope.id).requireBody()
         return LoanRenewalResult(result.id.toString(), result.returnDueAt.toString(), result.renewalCount)
     }
     override suspend fun space(scope: MemberScope, publicToken: String): ActionSpace {
@@ -78,7 +80,7 @@ class GeneratedMemberActionsGateway(private val session: ApiSession,private val 
             publicToken = uuid(bookingToken), bookingReschedule = BookingReschedule(startsAt = start, endsAt = end)).requireBody())
     }
     override suspend fun cancelBooking(scope: MemberScope, bookingToken: String): MemberBooking = booking(
-        api(MemberBookingsApi::class.java, scope).apiV1PublicMyBookingsCancelCreate(scope.slug, uuid(bookingToken), emptyMap()).requireBody())
+        api(MemberBookingsApi::class.java, scope).apiV1PublicMyBookingsCancelCreate(scope.slug, uuid(bookingToken), MemberBookingCancel()).requireBody())
 
     override suspend fun event(scope: MemberScope, publicToken: String): ActionEvent {
         val result = api(PublicEventsApi::class.java, scope).apiV1PublicEventsRetrieve(scope.slug, uuid(publicToken)).requireBody()
@@ -156,7 +158,7 @@ class GeneratedMemberActionsGateway(private val session: ApiSession,private val 
     override suspend fun preferences(scope: MemberScope): List<ActionPreference> = preferences(
         api(PersonalNotificationsApi::class.java, scope).apiV1NotificationsPreferencesRetrieve(scope.id).requireBody())
     override suspend fun updatePreference(scope: MemberScope, feature: String, channel: String, enabled: Boolean, dailyDigest: Boolean?): List<ActionPreference> {
-        val family = requireNotNull(Feature9d8Enum.entries.firstOrNull { it.value == feature }) { text(CoreStrings.CORE_THIS_NOTIFICATION_FAMILY_IS_UNAVAILABLE) }
+        val family = requireNotNull(Feature977Enum.entries.firstOrNull { it.value == feature && it != Feature977Enum.unknown_default_open_api }) { text(CoreStrings.CORE_THIS_NOTIFICATION_FAMILY_IS_UNAVAILABLE) }
         val delivery = requireNotNull(ChannelB6fEnum.entries.firstOrNull { it.value == channel }) { text(CoreStrings.CORE_THIS_NOTIFICATION_CHANNEL_IS_UNAVAILABLE) }
         require(dailyDigest == null || channel == "email") { text(CoreStrings.CORE_DAILY_DIGESTS_APPLY_TO_OPTIONAL_EMAIL_MESSAGES) }
         return preferences(api(PersonalNotificationsApi::class.java, scope).apiV1NotificationsPreferencesPartialUpdate(scope.id,

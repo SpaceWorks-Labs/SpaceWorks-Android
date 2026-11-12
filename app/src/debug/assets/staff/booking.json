@@ -15,5 +15,16 @@
   "arrived_at": null,
   "cancelled_at": null,
   "restore_until": null,
-  "status_before_cancel": ""
+  "status_before_cancel": "",
+  "decision_reason": "",
+  "departed_at": null,
+  "departures": [],
+  "event": null,
+  "is_house": false,
+  "linked_event": null,
+  "member_id": null,
+  "open_issue_id": null,
+  "organization_name": null,
+  "requested_price": null,
+  "space_name": ""
 }

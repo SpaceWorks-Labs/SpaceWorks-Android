@@ -12,7 +12,7 @@ import org.spaceworks.app.network.*
 import org.spaceworks.generated.model.*
 import java.io.IOException
 
-private const val USER="""{"session_authority":"member","id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
+private const val USER="""{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","tracks":["community"],"actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
 private class FakeAuth:AuthGateway {
     var who=Json.decodeFromString<AuthUserPayload>(USER)
     var identityFailure:Exception?=null
@@ -27,12 +27,12 @@ private class FakeAuth:AuthGateway {
     var googleReady=true
     var socialRefresh:String?="social-refresh"
     override val nativeSocialReady get()=googleReady
-    override suspend fun config()=PublicConfig(false,100,socialAuth=if(googleEnabled)mapOf("google" to
+    override suspend fun config()=DemoWire.config(false,100).copy(socialAuth=if(googleEnabled)mapOf("google" to
         kotlinx.serialization.json.buildJsonObject {put("enabled",kotlinx.serialization.json.JsonPrimitive(true));put("web_client_id",kotlinx.serialization.json.JsonPrimitive("server-web-client"))}) else null)
-    override suspend fun google(clientId:String,credential:suspend(String,String)->String):SocialLoginResponse {
+    override suspend fun google(clientId:String,credential:suspend(String,String)->String):SocialLoginResult {
         calls++;assertEquals("server-web-client",clientId)
         assertEquals("sdk-token",credential(clientId,"fresh-server-nonce"))
-        return SocialLoginResponse("social-access",emptyMap(),"authenticated",socialRefresh,mapOf("id" to kotlinx.serialization.json.JsonPrimitive(grantId)))
+        return SocialLoginResult.SocialLoginResponseValue(SocialLoginResponse("social-access",emptyMap(),"authenticated",socialRefresh,mapOf("id" to kotlinx.serialization.json.JsonPrimitive(grantId))))
     }
     override suspend fun login(username:String,password:String):DeviceLoginResult {
         calls++
@@ -155,7 +155,7 @@ class AuthTest {
         holder.initialize();holder.signIn("member","pass");assertNull(store.read())
         holder.verify("123456")
         assertEquals(TokenPair("access","refresh"),store.read());assertEquals(1,holder.state.value.selectedId)
-        assertFalse(holder.state.value.staffAllowed)
+        assertFalse(holder.state.value.user?.sessionAuthority==SessionAuthorityEnum.native_staff)
     }
     @Test fun webMfaWithoutRefreshFailsClosed()=runTest {
         val api=FakeAuth().apply {native=false};val store=MemoryTokenStore();val holder=AuthStateHolder(api,store)

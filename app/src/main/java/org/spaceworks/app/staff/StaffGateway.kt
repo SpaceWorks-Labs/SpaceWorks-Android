@@ -32,7 +32,7 @@ interface StaffGateway {
     suspend fun spaces(scope:MemberScope,page:Int):BookableSpaceListResponse
     suspend fun bookings(scope:MemberScope,spaceId:Int,page:Int):BookingListResponse
     suspend fun approveBooking(scope:MemberScope,id:Int):BookingAdmin
-    suspend fun rejectBooking(scope:MemberScope,id:Int):BookingAdmin
+    suspend fun rejectBooking(scope:MemberScope,id:Int,reason:String):BookingAdmin
 }
 
 /** Local storage-SDK instructions projected from a generated presign, never an API DTO. */

@@ -11,7 +11,7 @@ import org.spaceworks.app.network.*
 import org.spaceworks.generated.model.*
 import java.io.IOException
 
-private const val LOCAL_USER="""{"session_authority":"member","id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
+private const val LOCAL_USER="""{"session_authority":"member","kind":"person","is_platform":false,"has_staff_role":false,"has_elevated_authority":false,"has_organizations":false,"staff_roles":[],"superadmin_actions":[],"mfa_grace_ends_at":null,"mfa_enrolment_due":false,"merge_suggested":false,"handle":"member","handle_required":false,"handle_suggestion":null,"preferred_locale":null,"effective_locale":"en","supported_locales":[],"id":1,"username":"member","email":"member@example.invalid","display_name":"Member","phone":"","email_verified":true,"role":"member","is_superuser":false,"must_change_password":false,"makerspaces":[{"id":1,"slug":"fab-lab","role":"member","role_id":1,"role_ids":[1],"role_slugs":["member"],"role_names":["Member"],"role_name":"Member","role_slug":"member","source":"membership","tracks":["community"],"actions":[],"can_configure_machine_types":false,"is_machine_only":false,"can_refer":false,"can_verify":false,"verified_at":null,"referrals_enabled":false}]}"""
 private class LocalAccountAuth:AuthGateway {
     var user=Json.decodeFromString<AuthUserPayload>(LOCAL_USER)
     var entered:CompletableDeferred<Unit>?=null
@@ -26,8 +26,8 @@ private class LocalAccountAuth:AuthGateway {
     var passwordRelease:CompletableDeferred<Unit>?=null
     var verifyEntered:CompletableDeferred<Unit>?=null
     var verifyRelease:CompletableDeferred<Unit>?=null
-    override suspend fun config()=PublicConfig(false,100)
-    override suspend fun login(username:String,password:String):DeviceLoginResult {logins++;loginEntered?.complete(Unit);loginRelease?.await();if(loginMfa)return DeviceLoginResult.MFAChallengeResponseValue(MFAChallengeResponse(true,false,"challenge",300));return DeviceLoginResult.DeviceTokenResponseValue(DeviceTokenResponse("new-access","new-refresh",emptyMap(),DeviceGrant(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),"android","org.spaceworks.app","development","active",java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"),java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"),java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"))))}
+    override suspend fun config()=DemoWire.config(false,100)
+    override suspend fun login(username:String,password:String):DeviceLoginResult {logins++;loginEntered?.complete(Unit);loginRelease?.await();if(loginMfa)return DeviceLoginResult.MFAChallengeResponseValue(MFAChallengeResponse(true,false,"challenge",300));return DeviceLoginResult.DeviceTokenResponseValue(DeviceTokenResponse("new-access","new-refresh",emptyMap(),DemoWire.grant("org.spaceworks.app")))}
     override suspend fun enroll(challenge:String):MFAEnrollment=error("unused")
     override suspend fun verify(challenge:String,code:String,enrollment:Boolean):MFACompleted {verifyEntered?.complete(Unit);verifyRelease?.await();return MFACompleted(user,"verified-access","device",refresh="verified-refresh",deviceGrant=mapOf("id" to kotlinx.serialization.json.JsonPrimitive("00000000-0000-0000-0000-000000000001")),recoveryCodes=listOf("private-code"))}
     override suspend fun me():AuthUserPayload {entered?.complete(Unit);release?.await();failure?.let {throw it};return user}

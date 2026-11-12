@@ -20,11 +20,12 @@ import org.spaceworks.generated.model.*
 private class JourneyAuth(var minimum:String?=null):AuthGateway {
     var codes=mutableListOf<String>()
     override val nativeSocialReady=true
-    override suspend fun config()=PublicConfig(false,100,native=NativeConfig(NativeMinVersion(minimum,null),NativeProviders(true,true,null,null,emptyList())))
+    override suspend fun config()=DemoWire.config(false,100).copy(native=DemoWire.native(NativeMinVersion(minimum,null),NativeProviders(true,true,null,null,emptyList())))
     override suspend fun login(username:String,password:String):DeviceLoginResult=throw ApiFailure(401,"Wrong password.",null,null)
     override suspend fun enroll(challenge:String)=throw AssertionError()
     override suspend fun verify(challenge:String,code:String,enrollment:Boolean)=throw AssertionError()
-    override suspend fun me()=AuthUserPayload("member",1,"phone","","Phone Member","+919876543210",true,"member",false,false,emptyList())
+    override suspend fun me()=AuthUserPayload(SessionAuthorityEnum.member,1,"phone","","Phone Member","+919876543210",true,"member",false,false,
+        AuthUserPayloadKindEnum.person,false,false,false,false,emptyList(),emptyList(),emptyList(),null,false,false,"phone",false,null,null,"en",emptyList())
     override suspend fun logout() {}
     override suspend fun phoneStart(phone:String)=PhoneChallenge("journey-challenge",300)
     override suspend fun phoneConfirm(phone:String,code:String,challenge:PhoneChallenge):PhoneLoginResult {
@@ -32,7 +33,7 @@ private class JourneyAuth(var minimum:String?=null):AuthGateway {
         if(code!="123456")throw ApiFailure(400,"Invalid or expired code.",null,null)
         val at=java.time.OffsetDateTime.parse("2026-10-17T00:00:00Z")
         return PhoneLoginResult.DeviceTokenResponseValue(DeviceTokenResponse("a","r",emptyMap(),
-            DeviceGrant(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),"android","org.spaceworks.app","development","active",at,at,at)))
+            DemoWire.grant("org.spaceworks.app")))
     }
 }
 private class JourneyDeletion:AccountDeletionGateway {

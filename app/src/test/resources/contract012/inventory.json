@@ -1,0 +1,21 @@
+{
+ "count": 1,
+ "results": [
+  {
+   "id": 1,
+   "name": "x",
+   "description": "x",
+   "category_id": 1,
+   "category_name": "x",
+   "category_slug": "x",
+   "borrowing_terms": "x",
+   "availability": {
+    "mode": "status_only",
+    "label": "Lent at events only"
+   },
+   "image_url": "https://example.invalid/x",
+   "expected_back_on": "2026-11-12",
+   "event_only": false
+  }
+ ]
+}

@@ -41,5 +41,9 @@
   "return_evidence_ids": [],
   "return_reminder_sent_at": "2026-10-16T09:00:00Z",
   "status": "pending",
-  "updated_at": "2026-10-16T09:00:00Z"
+  "updated_at": "2026-10-16T09:00:00Z",
+  "pickup_from": null,
+  "pickup_until": null,
+  "requester_id": 0,
+  "return_due_notice": null
 }

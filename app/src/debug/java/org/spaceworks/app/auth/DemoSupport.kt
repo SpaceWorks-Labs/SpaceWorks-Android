@@ -62,7 +62,7 @@ class DemoAuthGateway:AuthGateway {
     private var verified=false
     private var passwordChanged=false
     private val registrations=mutableMapOf<String,String>()
-    override suspend fun config()=PublicConfig(true,10485760,passwordLogin=mapOf("enabled" to JsonPrimitive(true)))
+    override suspend fun config()=DemoWire.config(true,10485760).copy(passwordLogin=mapOf("enabled" to JsonPrimitive(true)))
     override suspend fun login(username:String,password:String):DeviceLoginResult {
         delay(350);this.username=username
         when {
@@ -80,9 +80,13 @@ class DemoAuthGateway:AuthGateway {
         return MFACompleted(me(),"demo-access","device",refresh="demo-refresh",deviceGrant=mapOf("id" to JsonPrimitive("00000000-0000-0000-0000-000000000001")),recoveryCodes=if(enrollment) listOf("DEMO-001-ABCD","DEMO-002-EFGH","DEMO-003-IJKL") else null)
     }
     override suspend fun me():AuthUserPayload=AuthUserPayload(
-        sessionAuthority=if(username.contains("staff"))"native_staff" else "member",id=1,username=username,email="meera@example.invalid",displayName=profileNames[username] ?: registrations[username] ?: if(username.contains("staff")) "Arjun Rao" else "Meera Nair",
+        sessionAuthority=if(username.contains("staff"))SessionAuthorityEnum.native_staff else SessionAuthorityEnum.member,id=1,username=username,email="meera@example.invalid",displayName=profileNames[username] ?: registrations[username] ?: if(username.contains("staff")) "Arjun Rao" else "Meera Nair",
         phone="",emailVerified=!username.contains("unverified") || verified,role="member",isSuperuser=username.contains("superadmin"),mustChangePassword=username.contains("temporary") && !passwordChanged,
-        makerspaces=if(username.contains("empty") || registrations.containsKey(username))emptyList() else if(username.contains("single"))listOf(membership(1,"fab-lab-kochi")) else listOf(membership(1,"fab-lab-kochi"),membership(2,"maker-space-bengaluru")))
+        makerspaces=if(username.contains("empty") || registrations.containsKey(username))emptyList() else if(username.contains("single"))listOf(membership(1,"fab-lab-kochi")) else listOf(membership(1,"fab-lab-kochi"),membership(2,"maker-space-bengaluru")),
+        kind=AuthUserPayloadKindEnum.person,isPlatform=false,hasStaffRole=username.contains("staff"),hasElevatedAuthority=username.contains("staff"),
+        hasOrganizations=false,staffRoles=emptyList(),superadminActions=emptyList(),mfaGraceEndsAt=null,mfaEnrolmentDue=false,mergeSuggested=false,
+        handle=username.substringBefore('@').filter {it.isLetterOrDigit() || it=='.'},handleRequired=false,handleSuggestion=null,
+        preferredLocale=null,effectiveLocale="en",supportedLocales=emptyList())
     override suspend fun forgotPassword(email:String):String {if(email.contains("unavailable"))throw ApiFailure(503,"Recovery unavailable","recovery_unavailable",null);return "If the details are valid, a verification email has been sent."}
     override suspend fun resetPassword(email:String,code:String,replacement:String):String {if(code!="123456")throw ApiFailure(400,"This account does not exist.",null,null);return "Password updated."}
     override suspend fun signUp(name:String,email:String,password:String,phone:String):String {registrations[email]=name;return "Account created"}
@@ -92,7 +96,21 @@ class DemoAuthGateway:AuthGateway {
     override suspend fun changePassword(current:String,replacement:String) {delay(200);passwordChanged=true}
     private fun membership(id:Int,slug:String)=AuthMembership(id=id,slug=slug,role="member",roleId=1,roleIds=listOf(1),roleSlugs=listOf("member"),
         roleNames=listOf("Member"),roleName="Member",roleSlug="member",source=AuthMembershipSourceEnum.membership,actions=emptyList(),
-        canConfigureMachineTypes=false,isMachineOnly=false,canRefer=false,canVerify=false,verifiedAt=null,referralsEnabled=false)
-    private fun grant()=DeviceGrant(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),"android","org.spaceworks.app","development","active",java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"),java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"),java.time.OffsetDateTime.parse("2026-10-16T00:00:00Z"))
+        canConfigureMachineTypes=false,isMachineOnly=false,canRefer=false,canVerify=false,verifiedAt=null,referralsEnabled=false,tracks=listOf(TracksEnum.community))
+    private fun grant()=DemoWire.grant("org.spaceworks.app")
 }
 
+/** Demo-only wire values decoded from the 0.12.0 schema shapes (all telemetry off). */
+object DemoWire {
+    private val json=Json {ignoreUnknownKeys=true;serializersModule=kotlinx.serialization.modules.SerializersModule {
+        contextual(java.util.UUID::class,org.openapitools.client.infrastructure.UUIDAdapter)
+        contextual(java.time.OffsetDateTime::class,org.openapitools.client.infrastructure.OffsetDateTimeAdapter)
+    }}
+    private const val OFF="""{"provider":"none","site_id":"","endpoint":""}"""
+    private const val TELEMETRY="""{"pageview":$OFF,"replay":$OFF,"diagnostics":{"sentry":{"enabled":false,"dsn":"","sample_rate":0},"firebase_performance":{"enabled":false,"sample_rate":0}},"firebase":{"api_key":"","auth_domain":"","project_id":"","app_id":"","messaging_sender_id":"","measurement_id":"","vapid_public_key":""}}"""
+    fun config(emailEnabled:Boolean,publicImageMaxBytes:Int):PublicConfig=json.decodeFromString(
+        """{"platform_telemetry":$TELEMETRY,"platform_telemetry_legacy_allowed":false,"email_enabled":$emailEnabled,"public_image_max_bytes":$publicImageMaxBytes,"passkeys_enabled":false,"landing_enabled":false}""")
+    fun native(minAppVersion:NativeMinVersion,providers:NativeProviders)=NativeConfig("Space Works",NativeAppIdentities(null,null),minAppVersion,providers)
+    fun grant(appId:String,authority:String="member",staffMakerspaceId:Int?=null):DeviceGrant=json.decodeFromString(
+        """{"id":"00000000-0000-0000-0000-000000000001","platform":"android","app_id":"$appId","environment":"development","status":"active","authority":"$authority","staff_makerspace_id":${staffMakerspaceId?:"null"},"login_method":"password","attested_at":"2026-10-16T00:00:00Z","last_used_at":"2026-10-16T00:00:00Z","created_at":"2026-10-16T00:00:00Z"}""")
+}

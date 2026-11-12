@@ -41,7 +41,7 @@ class AccountGatewayTest {
             val result=gateway.google("published-web-client-id"){client,nonce->
                 assertEquals("published-web-client-id",client);assertEquals("fresh-server-nonce",nonce);"synthetic-id-token"
             }
-            assertEquals("test-refresh",result.refresh)
+            assertEquals("test-refresh",(result as SocialLoginResult.SocialLoginResponseValue).value.refresh)
             assertEquals("/api/v1/auth/device/attestation-challenge",server.takeRequest().path)
             val nonce=server.takeRequest();assertEquals("/api/v1/auth/social/nonce",nonce.path)
             val nonceBody=Json.parseToJsonElement(nonce.body.readUtf8()).jsonObject

@@ -6,7 +6,9 @@
       "is_walk_in": false,
       "membership_id": 81,
       "user_id": 51,
-      "username": "meera"
+      "username": "meera",
+      "is_guest_pass": false,
+      "pass_valid_until": null
     }
   ]
 }

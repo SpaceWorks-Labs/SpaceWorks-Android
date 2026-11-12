@@ -14,7 +14,7 @@ class AuthGatewayTest {
         MockWebServer().use {server ->
             val tokens=MemoryTokenStore().apply {replace(TokenPair("access","refresh"))}
             val gateway=GeneratedAuthGateway(ApiSession(server.url("/"),tokens),"org.example.whitelabel",EnvironmentEnum.development,DevelopmentAttestation(true,true))
-            server.enqueue(MockResponse().setBody("""{"email_enabled":true,"public_image_max_bytes":100}"""));gateway.config()
+            server.enqueue(MockResponse().setBody("""{"platform_telemetry":{"pageview":{"provider":"none","site_id":"","endpoint":""},"replay":{"provider":"none","site_id":"","endpoint":""},"diagnostics":{"sentry":{"enabled":false,"dsn":"","sample_rate":0},"firebase_performance":{"enabled":false,"sample_rate":0}},"firebase":{"api_key":"","auth_domain":"","project_id":"","app_id":"","messaging_sender_id":"","measurement_id":"","vapid_public_key":""}},"platform_telemetry_legacy_allowed":false,"passkeys_enabled":false,"landing_enabled":false,"email_enabled":true,"public_image_max_bytes":100}"""));gateway.config()
             assertEquals("/api/v1/config",server.takeRequest().path)
             server.enqueue(MockResponse().setBody("""{"detail":"Password changed"}"""));gateway.changePassword("old","new")
             val password=server.takeRequest();assertEquals("/api/v1/auth/change-password",password.path)

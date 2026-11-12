@@ -53,7 +53,8 @@ interface InsightsGateway {
 }
 
 /** Generated operations only; every call carries the selected makerspace header. */
-class GeneratedInsightsGateway(private val session:ApiSession):InsightsGateway {
+/** Member usage uses the member grant; the staff dashboard needs the staff step-up grant's session. */
+class GeneratedInsightsGateway(private val session:ApiSession,private val staffSession:ApiSession=session):InsightsGateway {
     private fun <T> api(type:Class<T>,scope:MemberScope)=session.scopedApi(type,scope.id)
     override suspend fun usage(scope:MemberScope):UsageSummary {
         val value=api(MemberActivityApi::class.java,scope).apiV1MemberMakerspacesMyUsageRetrieve(scope.id).requireBody()
@@ -65,7 +66,7 @@ class GeneratedInsightsGateway(private val session:ApiSession):InsightsGateway {
             value.payments?.let {PaymentUsage(it.paidByCurrency,it.outstandingByCurrency)})
     }
     override suspend fun dashboard(scope:MemberScope):StaffDashboard {
-        val value=api(DashboardApi::class.java,scope).apiV1AdminMakerspaceDashboardRetrieve(scope.id).requireBody()
+        val value=staffSession.scopedApi(DashboardApi::class.java,scope.id).apiV1AdminMakerspaceDashboardRetrieve(scope.id).requireBody()
         // The schema declares default 0 for every counter, so an omitted (unavailable) counter cannot be
         // told apart from zero. Only server-reported non-zero counters are shown.
         val counters=listOf("pending_requests" to value.pendingRequests,"awaiting_issue" to value.awaitingIssue,"overdue_loans" to value.overdueLoans,

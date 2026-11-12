@@ -1,0 +1,85 @@
+{
+ "makerspace": {
+  "id": 7,
+  "name": "x",
+  "slug": "fab-lab",
+  "public_code": "x",
+  "location": "x",
+  "timezone": "x",
+  "opening_hours": {},
+  "map_url": "https://example.invalid/x",
+  "logo_url": "x",
+  "cover_image_url": "x",
+  "public_stats_enabled": false,
+  "public_site_enabled": false,
+  "public_inventory_enabled": false,
+  "public_landing_page": "auto",
+  "membership_policy": "request",
+  "request_access": "contact"
+ },
+ "frontend": {
+  "type": "x",
+  "hostname": "x",
+  "allowed_origins": []
+ },
+ "modules": [],
+ "edition": "x",
+ "features": [],
+ "charges_tracked": {
+  "loans": false,
+  "machines": false,
+  "bookings": false,
+  "events": false,
+  "membership": false,
+  "shop": false,
+  "donations": false
+ },
+ "workflows": [],
+ "theme": null,
+ "branding": null,
+ "telemetry": {
+  "pageview": {
+   "provider": "none",
+   "site_id": "x",
+   "endpoint": "x"
+  },
+  "replay": {
+   "provider": "none",
+   "site_id": "x",
+   "endpoint": "x"
+  },
+  "diagnostics": {
+   "sentry": {
+    "enabled": false,
+    "dsn": "x",
+    "sample_rate": 1.0
+   },
+   "firebase_performance": {
+    "enabled": false,
+    "sample_rate": 1.0
+   }
+  },
+  "firebase": {
+   "api_key": "x",
+   "auth_domain": "x",
+   "project_id": "x",
+   "app_id": "x",
+   "messaging_sender_id": "x",
+   "measurement_id": "x",
+   "vapid_public_key": "x"
+  }
+ },
+ "telemetry_legacy_allowed": false,
+ "email_enabled": false,
+ "default_locale": "x",
+ "supported_locales": [],
+ "messaging": {
+  "sms": false,
+  "whatsapp": false
+ },
+ "public_api": {
+  "base_url": "x",
+  "publishable_key": "x",
+  "inventory_path": "x"
+ }
+}

@@ -154,7 +154,7 @@ class DemoStaffGateway internal constructor(private val readFixture:(String)->St
         put("evidence_id",1401);put("object_key","demo/evidence.jpg");put("upload_url","https://sample.invalid/never-upload");put("method","POST");put("fields",buildJsonObject{});put("headers",buildJsonObject{})})}
     override suspend fun kitPreview(scope:MemberScope,body:KitPreviewInput):KitPreview{refusal();return decode(fixture("kits"))}
     override suspend fun events(scope:MemberScope,page:Int):EventListWithDefaults{refusal();val row=patch(obj("event"),"makerspace_id" to JsonPrimitive(scope.id));return decode(patch(envelope(if(scenario==StaffDemoScenario.EMPTY)emptyList()else listOf(row)),"default_registration_audience" to JsonPrimitive("members")))}
-    override suspend fun resolveCheckIn(scope:MemberScope,eventId:Int,body:EventCheckInResolveRequest):EventCheckInResolveResponse{refusal();if(body.checkinToken!="DEMO-CHECKIN")throw ApiFailure(404,"This is not a sample check-in code for this event.",null,null)
+    override suspend fun resolveCheckIn(scope:MemberScope,eventId:Int,body:EventCheckInResolveRequest):EventCheckInResolveResponse{refusal();if(body.credential!="DEMO-CHECKIN")throw ApiFailure(404,"This is not a sample check-in code for this event.",null,null)
         return decode(patch(obj("checkin"),"status" to JsonPrimitive(if(workspace(scope).attended)"attended"else "registered"),"confirmable" to JsonPrimitive(!workspace(scope).attended)))}
     override suspend fun markAttended(scope:MemberScope,registrationId:Int,body:EventAttendanceMark):EventAttendanceResult{refusal();val s=workspace(scope);if(s.attended)throw ApiFailure(409,"Attendance was already recorded.",null,null);s.attended=true
         return decode(patch(obj("registration"),"status" to JsonPrimitive("attended")))}
@@ -162,5 +162,5 @@ class DemoStaffGateway internal constructor(private val readFixture:(String)->St
     override suspend fun bookings(scope:MemberScope,spaceId:Int,page:Int):BookingListResponse{refusal();return decode(envelope(if(scenario==StaffDemoScenario.EMPTY)emptyList()else workspace(scope).bookings.values.toList()))}
     private fun decide(scope:MemberScope,id:Int,status:String):BookingAdmin{refusal();val s=workspace(scope);val row=patch(s.bookings.getValue(id),"status" to JsonPrimitive(status));s.bookings[id]=row;return decode(row)}
     override suspend fun approveBooking(scope:MemberScope,id:Int)=decide(scope,id,"confirmed")
-    override suspend fun rejectBooking(scope:MemberScope,id:Int)=decide(scope,id,"rejected")
+    override suspend fun rejectBooking(scope:MemberScope,id:Int,reason:String)=decide(scope,id,"rejected")
 }

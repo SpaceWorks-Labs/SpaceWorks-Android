@@ -1,0 +1,67 @@
+{
+ "session_authority": "member",
+ "id": 1,
+ "username": "x",
+ "email": "member@example.invalid",
+ "display_name": "x",
+ "phone": "x",
+ "email_verified": false,
+ "role": "x",
+ "is_superuser": false,
+ "must_change_password": false,
+ "kind": "person",
+ "is_platform": false,
+ "has_staff_role": true,
+ "has_elevated_authority": false,
+ "has_organizations": false,
+ "staff_roles": [],
+ "makerspaces": [
+  {
+   "id": 7,
+   "slug": "fab-lab",
+   "role": "x",
+   "role_id": 1,
+   "role_ids": [],
+   "role_slugs": [],
+   "role_names": [],
+   "role_name": "x",
+   "role_slug": "x",
+   "source": "membership",
+   "actions": [],
+   "can_configure_machine_types": false,
+   "is_machine_only": false,
+   "can_refer": false,
+   "can_verify": false,
+   "verified_at": "2026-11-12T10:00:00Z",
+   "referrals_enabled": false,
+   "tracks": [
+    "community",
+    "staff"
+   ]
+  }
+ ],
+ "superadmin_actions": [],
+ "mfa_grace_ends_at": null,
+ "mfa_enrolment_due": false,
+ "merge_suggested": false,
+ "handle": null,
+ "handle_required": true,
+ "handle_suggestion": "meera.n",
+ "preferred_locale": null,
+ "effective_locale": "x",
+ "supported_locales": [],
+ "event_grants": [
+  {
+   "event_id": 1,
+   "series_id": 1,
+   "makerspace_id": 1,
+   "makerspace_slug": "x",
+   "title": "x",
+   "source": "event_grant",
+   "permissions": [
+    "judge",
+    "check_in"
+   ]
+  }
+ ]
+}

@@ -14,7 +14,7 @@ class AccountAccessClearTest {
         val calls=mutableListOf<String>()
         var response:suspend(String)->String={"ACK"}
         private suspend fun reply(operation:String):String{calls+=operation;return response(operation)}
-        override suspend fun config()=PublicConfig(true,100)
+        override suspend fun config()=DemoWire.config(true,100)
         override suspend fun login(username:String,password:String):DeviceLoginResult=error("Unused")
         override suspend fun enroll(challenge:String):MFAEnrollment=error("Unused")
         override suspend fun verify(challenge:String,code:String,enrollment:Boolean):MFACompleted=error("Unused")

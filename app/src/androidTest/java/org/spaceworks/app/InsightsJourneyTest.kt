@@ -67,7 +67,7 @@ class InsightsJourneyTest {
     }
     @Test fun phoneRestoreSendsCodeAndConfirmsRestoration() {
         val auth=object:AuthGateway {
-            override suspend fun config()=PublicConfig(false,100)
+            override suspend fun config()=DemoWire.config(false,100)
             override suspend fun login(username:String,password:String)=throw AssertionError()
             override suspend fun enroll(challenge:String)=throw AssertionError()
             override suspend fun verify(challenge:String,code:String,enrollment:Boolean)=throw AssertionError()

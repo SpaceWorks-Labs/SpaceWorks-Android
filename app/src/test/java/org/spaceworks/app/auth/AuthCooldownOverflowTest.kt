@@ -32,7 +32,7 @@ class AuthCooldownOverflowTest {
     }
     private class ThrottledLogin(private val wait: Long?) : AuthGateway {
         var logins = 0
-        override suspend fun config() = PublicConfig(false, 100)
+        override suspend fun config() = DemoWire.config(false,100)
         override suspend fun login(username: String, password: String): DeviceLoginResult {
             logins++; throw ApiFailure(429, "Wait for the server.", "throttled", wait)
         }

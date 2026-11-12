@@ -13,7 +13,7 @@ class DemoAuthFlowTest {
             flow.open();flow.choose(provider);flow.requireMfa(true);flow.continueProvider()
             assertNull(flow.state.value.page);assertNotNull(bundle.holder.state.value.mfa);assertNull(bundle.tokens.read())
             bundle.holder.verify("123456");assertNotNull(bundle.holder.state.value.user)
-            assertFalse(bundle.holder.state.value.staffAllowed)
+            assertFalse(bundle.holder.state.value.user?.sessionAuthority==org.spaceworks.generated.model.SessionAuthorityEnum.native_staff)
         }
     }
     @Test fun phonePreviewEnforcesNumberCodeCooldownExpiryAndMemberOnlySession()=runTest {
@@ -26,7 +26,7 @@ class DemoAuthFlowTest {
         flow.expire();flow.verify("123456");assertNull(bundle.tokens.read())
         now=first;flow.sendCode();flow.verify("123456")
         assertNull(flow.state.value.page);assertNotNull(bundle.holder.state.value.user)
-        assertFalse(bundle.holder.state.value.staffAllowed)
+        assertFalse(bundle.holder.state.value.user?.sessionAuthority==org.spaceworks.generated.model.SessionAuthorityEnum.native_staff)
     }
     @Test fun updateAndEndedSessionPreviewsHaveNoCredentialsOrSessionSideEffects()=runTest {
         val bundle=DemoSupport.create();bundle.holder.initialize();val flow=bundle.previewAuth!!

@@ -129,7 +129,7 @@ openApiGenerate {
     outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.path)
     apiPackage.set("org.spaceworks.generated.api")
     modelPackage.set("org.spaceworks.generated.model")
-    configOptions.set(mapOf("serializationLibrary" to "kotlinx_serialization", "generateOneOfAnyOfWrappers" to "true", "useCoroutines" to "true", "dateLibrary" to "java8", "omitGradleWrapper" to "true", "useResponseAsReturnType" to "true"))
+    configOptions.set(mapOf("serializationLibrary" to "kotlinx_serialization", "generateOneOfAnyOfWrappers" to "true", "useCoroutines" to "true", "dateLibrary" to "java8", "omitGradleWrapper" to "true", "useResponseAsReturnType" to "true", "enumUnknownDefaultCase" to "true"))
     typeMappings.set(mapOf("AnyType" to "JsonElement", "Any" to "JsonElement", "object" to "JsonElement"))
     importMappings.set(mapOf("JsonElement" to "kotlinx.serialization.json.JsonElement","String" to "kotlin.String"))
     // The owner wire types remain unchanged: URI-or-empty is a String; unused
@@ -143,6 +143,7 @@ openApiGenerate {
         "WebsiteSection_website_url" to "String",
         "TenantBootstrapMakerspace_opening_hours" to "kotlinx.serialization.json.JsonElement",
         "NullEnum" to "kotlinx.serialization.json.JsonElement",
+        "Palette_pairs_inner_inner" to "kotlinx.serialization.json.JsonElement",
         "TenantBootstrapMakerspace_opening_hours_oneOf_weekly" to "kotlinx.serialization.json.JsonElement"
     ))
     enumNameMappings.set(mapOf("name" to "nameAscending", "" to "none"))

@@ -82,8 +82,15 @@ phase3_operations |= {
     'api_v1_me_messaging_retrieve','api_v1_me_messaging_consent_create',
     'api_v1_auth_account_restore_phone_create',
 }
+# Backend 0.12.0 auth: unusual-sign-in code resend, staff step-up, usernames and settings MFA enrolment.
+phase3_operations |= {
+    'api_v1_auth_login_code_resend_create','api_v1_auth_device_staff_grant_create',
+    'api_v1_handles_check_retrieve','api_v1_member_profile_handle_create','api_v1_auth_mfa_create',
+}
+# Operations that 0.12.0 added on an already-selected path but the app does not call.
+unused_operations={'api_v1_auth_me_partial_update'}
 base_paths=set(selected)
-base_operations={op['operationId'] for path in base_paths for op in s['paths'][path].values() if isinstance(op,dict) and 'operationId' in op}
+base_operations={op['operationId'] for path in base_paths for op in s['paths'][path].values() if isinstance(op,dict) and 'operationId' in op}-unused_operations
 found=set()
 for path, item in s['paths'].items():
     operations={op.get('operationId') for op in item.values() if isinstance(op,dict)} & phase3_operations

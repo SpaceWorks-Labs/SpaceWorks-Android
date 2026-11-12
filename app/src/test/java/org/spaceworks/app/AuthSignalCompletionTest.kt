@@ -28,10 +28,10 @@ class AuthSignalCompletionTest {
         val logoutEntered=CompletableDeferred<Unit>()
         val logoutRelease=CompletableDeferred<Unit>()
         var failure:ApiFailure?=null
-        override suspend fun config()=PublicConfig(false,100)
+        override suspend fun config()=DemoWire.config(false,100)
         override suspend fun me():AuthUserPayload {
             failure?.let {throw it}
-            return AuthUserPayload("member",1,"member","member@example.invalid","Member","",true,"member",false,true,emptyList())
+            return org.spaceworks.app.testsupport.Payloads.testUser("member",1,"member","member@example.invalid","Member","",true,"member",false,true,emptyList())
         }
         override suspend fun login(username:String,password:String):DeviceLoginResult=error("Unexpected login")
         override suspend fun enroll(challenge:String):MFAEnrollment=error("Unexpected enrollment")
