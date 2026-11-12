@@ -44,4 +44,16 @@ class DemoContextualRequestGateway:ContextualRequestGateway {
     }
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text))
+/** Debug-only feeds: the "link" points at an invalid host, so no real calendar ever subscribes. */
+class DemoCalendarFeedGateway:CalendarFeedGateway {
+    private val enabled=mutableMapOf(FeedKind.EVENTS to false,FeedKind.COMBINED to true)
+    override suspend fun status(scope:MemberScope,kind:FeedKind):FeedStatus {
+        delay(80)
+        val on=enabled[kind]?:throw org.spaceworks.app.network.ApiFailure(404,"Not found.",null,null)
+        return FeedStatus(on,if(on)"a1b2" else null)
+    }
+    override suspend fun issue(scope:MemberScope,kind:FeedKind):Pair<String,String> {delay(200);enabled[kind]=true;return "https://demo.invalid/feeds/sample.ics" to "c3d4"}
+    override suspend fun revoke(scope:MemberScope,kind:FeedKind){delay(150);enabled[kind]=false}
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text))

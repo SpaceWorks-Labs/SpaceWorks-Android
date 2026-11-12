@@ -13,6 +13,11 @@ import org.spaceworks.app.platform.MobileCopyException
 import org.spaceworks.app.platform.MobileText
 import org.spaceworks.app.platform.failure
 
+/** For 204 answers: a failure maps to [ApiFailure], success has no body to read. */
+internal fun retrofit2.Response<*>.requireSuccess() {
+    if(!isSuccessful)throw org.spaceworks.app.network.Errors.map(code(),errorBody()?.string(),headers()["Retry-After"])
+}
+
 /** Presentation text for a failure: local copy, the server's (or eligibility) copy, or the connection fallback. */
 fun MobileText.featureFailure(error:Exception):String = when(error) {
     is MobileCopyException->failure(error)

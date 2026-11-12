@@ -70,4 +70,22 @@
     <string name="kits_plan_sent">"Your consumables are reserved for this event or booking."</string>
     <string name="kits_lock_busy">"The space is busy with another request. Try again in a moment."</string>
     <string name="kits_operation_conflict">"This request changed since you first sent it. Check it and send it again."</string>
+    <string name="feeds_title">"Calendar feeds"</string>
+    <string name="feeds_help">"Subscribe your phone calendar to your events and shifts here. The app never keeps the feed link."</string>
+    <string name="feeds_events">"My events"</string>
+    <string name="feeds_shifts">"My shifts"</string>
+    <string name="feeds_combined">"Everything I'm part of"</string>
+    <string name="feeds_on">"On (link ending %1$s)"</string>
+    <string name="feeds_off">"Off"</string>
+    <string name="feeds_subscribe">"Subscribe"</string>
+    <string name="feeds_new_link">"Make a new link"</string>
+    <string name="feeds_turn_off">"Turn off"</string>
+    <string name="feeds_none">"No calendar feeds are available here."</string>
+    <string name="feeds_warning_title">"Anyone with this link can see these entries"</string>
+    <string name="feeds_warning_body">"The feed link works without signing in. Only add it to your own calendar. Making a new link stops the old one working."</string>
+    <string name="feeds_warning_accept">"I understand, continue"</string>
+    <string name="feeds_ready">"Your feed is ready. Add it to your calendar now: the link is shown only once."</string>
+    <string name="feeds_add_to_calendar">"Add to calendar"</string>
+    <string name="feeds_no_calendar_app">"No calendar app could open the feed. Make a new link from a device with a calendar app."</string>
+    <string name="feeds_done">"Done"</string>
 </resources>

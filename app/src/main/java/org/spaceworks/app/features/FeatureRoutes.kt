@@ -14,7 +14,7 @@ import org.spaceworks.app.platform.rememberMobileText
 import org.spaceworks.app.ui.BrandButton
 
 /** Member overlays opened from Home, Activity or Profile. */
-enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL }
+enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL, FEEDS }
 
 /** [onMembershipChanged] refreshes the member overview after an action that changes eligibility or activity. */
 @Composable fun FeatureRouteScreen(features:MemberFeatures,route:FeatureRoute,member:MemberStateHolder?,onMembershipChanged:()->Unit,onBack:()->Unit) {
@@ -25,6 +25,7 @@ enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL }
         FeatureRoute.WAIVER->WaiverScreen(features.waiver,onBack,onMembershipChanged)
         FeatureRoute.CONTEXTUAL->ContextualRequestScreen(features.contextual,requestContexts(memberState.overview.value,copyText),
             memberState.inventory.value?.items.orEmpty(),onBack,onMembershipChanged)
+        FeatureRoute.FEEDS->CalendarFeedsScreen(features.feeds,onBack)
     }
 }
 
@@ -33,4 +34,5 @@ enum class FeatureRoute { HISTORY, WAIVER, CONTEXTUAL }
     val copyText=rememberMobileText()
     BrandButton(copyText(FeatureStrings.HISTORY_TITLE),{open(FeatureRoute.HISTORY)},modifier=Modifier.semantics {testTag="borrowing-history-entry"})
     BrandButton(copyText(FeatureStrings.KITS_TITLE),{open(FeatureRoute.CONTEXTUAL)},modifier=Modifier.semantics {testTag="contextual-request-entry"})
+    BrandButton(copyText(FeatureStrings.FEEDS_TITLE),{open(FeatureRoute.FEEDS)},modifier=Modifier.semantics {testTag="calendar-feeds-entry"})
 }
