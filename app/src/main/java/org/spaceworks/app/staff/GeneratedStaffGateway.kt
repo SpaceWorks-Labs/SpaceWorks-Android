@@ -54,7 +54,7 @@ class GeneratedStaffGateway(private val session:ApiSession,private val authorize
         result
     }
     override suspend fun directLoans(scope:MemberScope,page:Int)=checked(scope){requireId(page);requests(scope).apiV1AdminMakerspaceDirectLoansList(scope.id,page=page).requireBody().also{validatePage(it.next?.toString(),scope,"/api/v1/admin/makerspace/${scope.id}/direct-loans",page)}}
-    override suspend fun directMembers(scope:MemberScope,page:Int)=checked(scope){requireId(page);api(ApiApi::class.java,scope).apiV1AdminMakerspaceDirectLoanMembersList(scope.id,page=page).requireBody().also{validatePage(it.next?.toString(),scope,"/api/v1/admin/makerspace/${scope.id}/direct-loan-members",page)}}
+    override suspend fun directMembers(scope:MemberScope,page:Int)=checked(scope){requireId(page);requests(scope).apiV1AdminMakerspaceDirectLoanMembersList(scope.id,page=page).requireBody().also{validatePage(it.next?.toString(),scope,"/api/v1/admin/makerspace/${scope.id}/direct-loan-members",page)}}
     override suspend fun inventory(scope:MemberScope,page:Int,search:String)=checked(scope){
         requireId(page);val result=api(AdminInventoryApi::class.java,scope).apiV1AdminMakerspaceInventoryList(scope.id,page=page,q=search.takeIf{it.isNotEmpty()}).requireBody()
         validatePage(result.next?.toString(),scope,"/api/v1/admin/makerspace/${scope.id}/inventory",page,search)
@@ -78,7 +78,7 @@ class GeneratedStaffGateway(private val session:ApiSession,private val authorize
     }
     override suspend fun evidence(scope:MemberScope,body:EvidenceUrlRequest)=checked(scope,"upload_evidence"){
         require(body.contentType in setOf("image/jpeg","image/png")&&(body.sizeBytes==null||body.sizeBytes>=0))
-        api(ApiApi::class.java,scope).apiV1AdminMakerspacesUploadsEvidenceUrlCreate(scope.id,body).requireBody().also{this.requireId(it.evidenceId)}
+        api(EvidenceApi::class.java,scope).apiV1AdminMakerspacesUploadsEvidenceUrlCreate(scope.id,body).requireBody().also{this.requireId(it.evidenceId)}
     }
     override suspend fun kitPreview(scope:MemberScope,body:KitPreviewInput)=checked(scope){
         body.requestId?.let(::requireId);body.loanId?.let(::requireId);body.containerId?.let(::requireId);payloads(body.qrPayloads);resolutions(body.resolutions)
@@ -91,7 +91,7 @@ class GeneratedStaffGateway(private val session:ApiSession,private val authorize
         result
     }
     override suspend fun resolveCheckIn(scope:MemberScope,eventId:Int,body:EventCheckInResolveRequest)=checked(scope){
-        requireId(eventId);require(body.checkinToken.isNotBlank()&&body.checkinToken.toByteArray().size<=4096)
+        requireId(eventId);require((body.checkinToken==null)!=(body.credential==null)&&body.credential.orEmpty().length<=80)
         events(scope).apiV1AdminEventsCheckInResolveCreate(eventId,body).requireBody()
     }
     override suspend fun markAttended(scope:MemberScope,registrationId:Int,body:EventAttendanceMark)=checked(scope,"manage_events"){
@@ -109,7 +109,10 @@ class GeneratedStaffGateway(private val session:ApiSession,private val authorize
         }
     }
     override suspend fun approveBooking(scope:MemberScope,id:Int)=checked(scope,"manage_bookings"){requireId(id);bookings(scope).apiV1AdminBookingsApproveCreate(id).requireBody().also{require(it.id==id)}}
-    override suspend fun rejectBooking(scope:MemberScope,id:Int)=checked(scope,"manage_bookings"){requireId(id);bookings(scope).apiV1AdminBookingsRejectCreate(id).requireBody().also{require(it.id==id)}}
+    override suspend fun rejectBooking(scope:MemberScope,id:Int,reason:String)=checked(scope,"manage_bookings"){
+        requireId(id);require(reason.isNotBlank()&&reason.length<=1000)
+        bookings(scope).apiV1AdminBookingsRejectCreate(id,BookingReject(reason)).requireBody().also{require(it.id==id)}
+    }
     private fun kits(values:List<KitCount>?){values?.let{require(it.size<=3550&&it.map{row->row.key}.distinct().size==it.size);it.forEach{row->require(row.present>=0)}}}
     private fun payloads(values:List<String>?){values?.let{require(it.size<=50&&it.distinct().size==it.size);require(it.all{value->value.isNotBlank()&&value.toByteArray().size<=64&&value.none(Char::isISOControl)})}}
     private fun resolutions(values:List<ReturnItemResolution>?){values?.let{require(it.map{row->row.itemId}.distinct().size==it.size);it.forEach{row->require(row.itemId>0&&(row.returned?:0)>=0&&(row.damaged?:0)>=0&&(row.missing?:0)>=0);row.assets?.let{assets->require(assets.map{a->a.assetId}.distinct().size==assets.size);assets.forEach{asset->requireId(asset.assetId)}}}}}

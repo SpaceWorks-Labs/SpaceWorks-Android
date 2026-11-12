@@ -82,6 +82,8 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
     val links=bundle.links?.state?.collectAsStateWithLifecycle()?.value
     val staff=bundle.staff
     val staffState=staff?.state?.collectAsStateWithLifecycle()?.value
+    // Read for recomposition: staff tools follow the staff grant's state.
+    bundle.staffGrant?.state?.collectAsStateWithLifecycle()?.value
     val staffAvailable=bundle.staffAvailable()
     var showingGuide by remember(bundle,state.user?.id,state.selectedId){mutableStateOf(false)}
     val guideScope=state.user?.id?.let {user->state.selectedId?.let {maker->GuideScope(bundle.origin,user.toString(),maker)}}
@@ -213,6 +215,12 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 Text(copyText(UiStrings.MOBILE_VALUE_VALUE_C1AACD,state.selected?.roleName.orEmpty(),makerspaceLabel(state.selected?.slug.orEmpty())))
                                 if(content?.scope?.id==state.selectedId && member!=null)MemberProfileSummary(member)
                                 if(staff!=null && staffAvailable)BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_STAFF_TOOLS),{showingStaff=true},!state.busy,modifier=Modifier.semantics {testTag="staff-entry"})
+                                // A member grant never carries staff authority: offer the staff step-up (PRD §7 item 6).
+                                val grant=bundle.staffGrant
+                                val selectedStaff=state.selected?.takeIf {state.user?.hasStaffRole==true && org.spaceworks.generated.model.TracksEnum.staff in it.tracks}
+                                if(grant!=null && staff!=null && !staffAvailable && selectedStaff!=null)
+                                    BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_STAFF_SIGN_IN),{grant.begin(MemberScope(selectedStaff.id,selectedStaff.slug))},!state.busy,modifier=Modifier.semantics {testTag="staff-step-up"})
+                                if(grant!=null && staffAvailable)BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_SIGN_OUT_OF_STAFF_TOOLS),{scope.launch {showingStaff=false;staff?.clear();grant.signOut()}},!state.busy,modifier=Modifier.semantics {testTag="staff-sign-out"})
                                 onAccount?.let {BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_title),it,!state.busy,modifier=Modifier.semantics {testTag="account-entry"})}
                                 if(payments!=null)BrandTextButton(copyText(PaymentStrings.PAYMENT_PAYMENTS),{showingPayments=true},!state.busy,modifier=Modifier.semantics {testTag="payments-entry"})
                                 state.memberships.filter {it.id!=state.selectedId}.forEach {membership ->

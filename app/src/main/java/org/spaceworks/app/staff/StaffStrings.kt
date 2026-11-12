@@ -181,4 +181,8 @@ object StaffStrings {
     val STAFF_PREVIEW_RATE_LIMITED=MobileCopyKey(R.string.staff_preview_rate_limited,"Request limit reached")
     val STAFF_PREVIEW_PARTIAL_ASSIGNMENT=MobileCopyKey(R.string.staff_preview_partial_assignment,"Issue fails after box assignment")
     val STAFF_PREVIEW_KIT_CHECKLIST=MobileCopyKey(R.string.staff_preview_kit_checklist,"Kit checklist required")
+    val STAFF_STAFF_SIGN_IN=MobileCopyKey(R.string.staff_staff_sign_in,"Staff sign-in")
+    val STAFF_CONFIRM_IT_S_YOU_WITH_YOUR_AUTHENTICATOR_TO_OPEN_STAFF_TOOLS_FOR_VALUE=MobileCopyKey(R.string.staff_confirm_it_s_you_with_your_authenticator_to_open_staff_tools_for_value,"Confirm it's you with your authenticator app to open staff tools for %1\$s.")
+    val STAFF_SIGN_OUT_OF_STAFF_TOOLS=MobileCopyKey(R.string.staff_sign_out_of_staff_tools,"Sign out of staff tools")
+    val STAFF_SIGNED_OUT_OF_STAFF_TOOLS=MobileCopyKey(R.string.staff_signed_out_of_staff_tools,"Signed out of staff tools.")
 }

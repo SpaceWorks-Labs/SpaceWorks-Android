@@ -66,21 +66,32 @@ class AppController(application:Application):AndroidViewModel(application) {
         var payments:org.spaceworks.app.payments.PaymentsStateHolder?=null
         var staff:org.spaceworks.app.staff.StaffStateHolder?=null
         var insights:org.spaceworks.app.insights.InsightsStateHolder?=null
-        val session=ApiSession(ServerAddress.parse(origin,BuildConfig.DEBUG),store){holder.state.value.selectedId?.toString()}
+        lateinit var staffGrant:org.spaceworks.app.staff.StaffGrantStateHolder
+        val server=ServerAddress.parse(origin,BuildConfig.DEBUG)
+        val trust=EncryptedDeviceTrustStore.sharedAndroid(application,origin)
+        val session=ApiSession(server,store,BuildConfig.VERSION_NAME,trust) {holder.state.value.selectedId?.toString()}
+        // The staff step-up grant is a second device grant with its own encrypted pair and refresh.
+        val staffStore=EncryptedTokenStore.sharedAndroid(application,"$origin#staff")
+        val staffSession=ApiSession(server,staffStore,BuildConfig.VERSION_NAME,trust) {staffGrant.state.value.makerspaceId?.toString()}
         val environment=if(BuildConfig.DEBUG)EnvironmentEnum.development else EnvironmentEnum.production
         val emulator=Build.FINGERPRINT.startsWith("generic") || Build.MODEL.contains("Emulator") || Build.MODEL.contains("sdk_gphone") || Build.PRODUCT.startsWith("sdk_")
         val integrity=BuildConfig.PLAY_INTEGRITY_PROJECT.takeIf {it>0}?.let {PlayIntegrityProofProvider(application,it)}
         val attestation=NativeAttestation(DevelopmentAttestation(BuildConfig.DEBUG,emulator,text=copyText),integrity?.let {provider->{challenge:String->provider.proof(challenge)}},copyText)
         val gateway=GeneratedAuthGateway(session,BuildConfig.APPLICATION_ID,environment,attestation,
             onNativeSignOut={try {GoogleIdentity.clear(application)}catch(cancelled:kotlinx.coroutines.CancellationException){throw cancelled}catch(_:Exception){}},
-            onBeforeOwnedSignOut={epoch->push?.disable(forgetConsent=false,expectedEpoch=epoch)},text=copyText)
+            onBeforeOwnedSignOut={epoch->push?.disable(forgetConsent=false,expectedEpoch=epoch);staffGrant.signOut(notice=false)},text=copyText)
+        staffGrant=org.spaceworks.app.staff.StaffGrantStateHolder(
+            org.spaceworks.app.staff.GeneratedStaffGrantGateway(session,staffSession,BuildConfig.APPLICATION_ID,environment,attestation),staffStore,copyText)
         holder=AuthStateHolder(gateway,store,
             readSelection={prefs.getInt("space.$origin",-1).takeIf {it>0}},
             saveSelection={id->prefs.edit().apply {if(id==null)remove("space.$origin")else putInt("space.$origin",id)}.apply()},
-            onSessionEnded={insights?.clear();accounts?.clear();runtime?.let(management::sessionEnded);staff?.resetAccount();member?.clear();actions?.clear();payments?.clear();links?.clear();push?.pause()},
+            onSessionEnded={staffGrant.clearLocal();insights?.clear();accounts?.clear();runtime?.let(management::sessionEnded);staff?.resetAccount();member?.clear();actions?.clear();payments?.clear();links?.clear();push?.pause()},
             onScopeChanged={insights?.clear();runtime?.let(management::scopeChanged);staff?.clear();member?.clear();actions?.clear();payments?.clear()},text=copyText,
-            appVersion=BuildConfig.VERSION_NAME)
+            appVersion=BuildConfig.VERSION_NAME,staffGrantFor=staffGrant::covers)
         session.bindIdentityEpoch {holder.acceptedInstallationEpoch}
+        session.onUpdateRequired={holder.requireUpdate()}
+        staffSession.onUpdateRequired={holder.requireUpdate()}
+        val handles=HandleStateHolder(gateway,{holder.foreground()},copyText)
         links=LinkStateHolder(session.server,holder::authorizeMakerspace,{id->if(staff?.protectsNavigation==true || management.protectsNavigation())throw kotlinx.coroutines.CancellationException();holder.select(id)},holder::authorizeSlug,text=copyText)
         push=PushStateHolder(GeneratedPushGateway(session,environment),object:PushProvider {
             override suspend fun token():String=throw kotlinx.coroutines.CancellationException("Push owner required")
@@ -119,31 +130,32 @@ class AppController(application:Application):AndroidViewModel(application) {
         val staffAuthority=org.spaceworks.app.staff.StaffAuthorizer {scope,action->
             val current=holder.state.value
             val membership=current.selected
-            current.staffAllowed && membership?.id==scope.id && membership.slug==scope.slug &&
-                (action==null || action in membership.actions)
+            staffGrant.covers(scope.id) && membership?.id==scope.id && membership.slug==scope.slug &&
+                (action==null || action in staffGrant.state.value.actions)
         }
         val transfer=StorageTransfer(java.io.File(application.cacheDir,"staff-transfer"),session.server.toString().takeIf {BuildConfig.DEBUG&&session.server.scheme=="http"})
         staff=org.spaceworks.app.staff.StaffStateHolder(
-            org.spaceworks.app.staff.GeneratedStaffGateway(session,staffAuthority,text=copyText),staffAuthority,
+            org.spaceworks.app.staff.GeneratedStaffGateway(staffSession,staffAuthority,text=copyText),staffAuthority,
             org.spaceworks.app.staff.StaffPhotoUpload {grant,jpeg->
                 if(grant.method=="PUT")transfer.uploadPut(grant.uploadUrl,grant.headers,jpeg,"image/jpeg")
                 else transfer.uploadPost(grant.uploadUrl,grant.fields,jpeg,"image/jpeg","evidence.jpg")
-            },onUnauthorized={holder.foreground()},onForbidden={holder.foreground()},text=copyText)
+            },onUnauthorized={staffGrant.foreground()},onForbidden={staffGrant.foreground()},text=copyText)
         runtime=NativeAccountRuntime(session.server.toString(),store,{holder.acceptedInstallationEpoch},
             {holder.state.value.user?.id?.toString()},
             {holder.state.value.selected?.let {org.spaceworks.app.member.MemberScope(it.id,it.slug)}},
             holder::endLocalSession,holder::foreground,holder::dropConfirmedMembership)
-        insights=org.spaceworks.app.insights.InsightsStateHolder(org.spaceworks.app.insights.GeneratedInsightsGateway(session),
+        insights=org.spaceworks.app.insights.InsightsStateHolder(org.spaceworks.app.insights.GeneratedInsightsGateway(session,staffSession),
             failureText={copyText.apiFailure(it)},unavailableText={copyText(org.spaceworks.app.copy.CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)},onUnauthorized={holder.foreground()})
         val deletedNotice=application.getString(R.string.deletion_deleted)
         val bundle=AuthBundle(holder,store,accounts=accounts,member=member,actions=actions,origin=session.server.toString(),push=push,links=links,pushConfigured=FcmRegistration.configured(application),sessionEpoch={store.snapshot().epoch},payments=payments,staff=staff,
-            staffAvailable={holder.state.value.staffAllowed && holder.state.value.selected!=null},management=management,
+            staffAvailable={holder.state.value.selected?.let {staffGrant.covers(it.id)}==true},management=management,
+            staffGrant=staffGrant,handles=handles,
             deletionPreview={_->
                 if(holder.acceptedInstallationEpoch==null)null else GeneratedDeletionFlow(
                     AccountDeletionStateHolder(GeneratedAccountDeletionGateway(session) {holder.acceptedInstallationEpoch!=null},
                         onDeleted={holder.endLocalSession(deletedNotice)},failureText={copyText.apiFailure(it)}),
                     {id->holder.state.value.memberships.firstOrNull {it.id==id}?.slug?.let {org.spaceworks.app.ui.makerspaceLabel(it)}},
-                    {id->id!=null && holder.state.value.staffAllowed && holder.state.value.memberships.any {it.id==id}},
+                    {id->id!=null && staffGrant.covers(id) && holder.state.value.memberships.any {it.id==id}},
                     session.server.host,{holder.state.value.googleClientId})
             },insights=insights)
         management.register(bundle,requireNotNull(runtime)) {owner->GeneratedAccountGateway(session,owner.hasSession,owner.selected,application.resources::accountText)}

@@ -207,10 +207,11 @@ class StaffStateHolder(
         if(row.status !in setOf("pending","pending_approval")||value.isEmpty()||value.length>1000){invalid(text(StaffStrings.STAFF_ADD_A_REASON_OF_UP_TO_1_000_CHARACTERS));return}
         mutate("reject_request",{api.reject(it,row.id,RejectRequest(value))}){replaceRequest(it,text(StaffStrings.STAFF_REQUEST_REJECTED))}}
     private fun replaceRequest(row:AdminRequest,notice:String){mutable.update{it.copy(selectedRequest=row,requests=it.requests.map{old->if(old.id==row.id)row else old},notice=notice)}}
-    suspend fun decideBooking(id:Int,approve:Boolean){val row=state.value.bookings.firstOrNull{it.id==id}?:return;val space=state.value.selectedSpace?:return
+    suspend fun decideBooking(id:Int,approve:Boolean,reason:String=""){val row=state.value.bookings.firstOrNull{it.id==id}?:return;val space=state.value.selectedSpace?:return
         if(row.status.value!="pending"||row.spaceId!=space.id)return
+        val why=reason.trim();if(!approve&&(why.isEmpty()||why.length>1000))return
         val version=versions["bookings"];val expected=epoch.get()
-        mutate("manage_bookings",{if(approve)api.approveBooking(it,id)else api.rejectBooking(it,id)}){result->if(versions["bookings"]==version&&state.value.selectedSpace?.id==space.id)mutable.update{it.copy(bookings=it.bookings.map{old->if(old.id==id)result else old},notice=if(approve)text(StaffStrings.STAFF_BOOKING_APPROVED) else text(StaffStrings.STAFF_BOOKING_REJECTED))}}
+        mutate("manage_bookings",{if(approve)api.approveBooking(it,id)else api.rejectBooking(it,id,why)}){result->if(versions["bookings"]==version&&state.value.selectedSpace?.id==space.id)mutable.update{it.copy(bookings=it.bookings.map{old->if(old.id==id)result else old},notice=if(approve)text(StaffStrings.STAFF_BOOKING_APPROVED) else text(StaffStrings.STAFF_BOOKING_REJECTED))}}
         val refusal=state.value.error
         if(refusal!=null&&fresh(expected)&&state.value.selectedSpace?.id==space.id){loadBookings();if(fresh(expected)&&state.value.selectedSpace?.id==space.id)mutable.update{it.copy(error=refusal)}}
     }
@@ -310,7 +311,7 @@ class StaffStateHolder(
     suspend fun prepareKits(){val h=state.value.handover?:return;if(!itemsReady(h))return
         if(!needsKits(h)){mutable.update{it.copy(handover=h.copy(kits=emptyList(),kitCounts=emptyMap(),kitsReady=true))};return}
         mutate(if(h.returning)"return_request" else if(h.mode==StaffHandoverMode.DIRECT_ISSUE)"issue_direct_loan" else "issue_request",{scope->api.kitPreview(scope,KitPreviewInput(
-            phase=PhaseEnum.entries.first{it.value==if(h.returning)"return" else "issue"},requestId=h.request?.id,loanId=h.loan?.id,
+            phase=Phase740Enum.entries.first{it.value==if(h.returning)"return" else "issue"},requestId=h.request?.id,loanId=h.loan?.id,
             boxCode=h.boxCode.takeIf{it.isNotEmpty()},qrPayloads=h.scans.map{it.qr.payload},items=if(h.mode==StaffHandoverMode.DIRECT_ISSUE)selectedItems(h)else null,resolutions=if(h.returning)h.returns.map{it.body()}else null))}){result->
             require(result.components.all{it.quantity>=0}&&result.components.distinctBy{it.key}.size==result.components.size)
             mutable.update{it.copy(handover=it.handover?.copy(kits=result.components,kitCounts=emptyMap(),kitsReady=true))}
@@ -353,7 +354,7 @@ class StaffStateHolder(
     fun showError(message:String){invalid(message)}
     suspend fun uploadPhoto(){val h=state.value.handover?:return;val bytes=photo?:return;val pv=photoVersion;val hv=handoverVersion
         mutate("upload_evidence",{scope->val grant=api.evidence(scope,EvidenceUrlRequest(
-            evidenceType=EvidenceUrlRequestEvidenceTypeEnum.entries.first{it.value==if(h.returning)"return" else "issue"},contentType="image/jpeg",sizeBytes=bytes.size))
+            evidenceType=EvidenceType5ffEnum.entries.first{it.value==if(h.returning)"return" else "issue"},contentType="image/jpeg",sizeBytes=bytes.size))
             if(pv!=photoVersion||hv!=handoverVersion)throw CancellationException()
             evidenceUpload.upload(StaffEvidence.upload(grant),bytes)
             grant.evidenceId
@@ -386,8 +387,9 @@ class StaffStateHolder(
         checkInVersion++;mutable.update{it.copy(section=StaffSection.CHECK_IN,checkInEvent=event,person=null,attendanceNotice=null,error=null)}}
     suspend fun resolveCheckIn(token:String){val event=state.value.checkInEvent?:return;if(!canRequest()||!can("manage_events"))return
         checkInVersion++;val version=checkInVersion;mutable.update{it.copy(person=null,attendanceNotice=null,error=null)}
-        if(!validPayload(token)){invalid(text(StaffStrings.STAFF_ENTER_A_VALID_EVENT_CHECK_IN_CODE));return}
-        mutate("manage_events",{api.resolveCheckIn(it,event.id,EventCheckInResolveRequest(token.trim()))}){person->if(version==checkInVersion)mutable.update{it.copy(person=person)}}}
+        val body=checkInBody(token)
+        if(!validPayload(token)||body==null){invalid(text(StaffStrings.STAFF_ENTER_A_VALID_EVENT_CHECK_IN_CODE));return}
+        mutate("manage_events",{api.resolveCheckIn(it,event.id,body)}){person->if(version==checkInVersion)mutable.update{it.copy(person=person)}}}
     fun canConfirmAttendance()=canRequest()&&can("manage_events")&&state.value.person?.let{it.status=="registered"&&it.confirmable&&it.registrationId>0}==true
     suspend fun confirmAttendance(){if(!canConfirmAttendance())return;val person=state.value.person?:return;val version=checkInVersion
         mutate("manage_events",{api.markAttended(it,person.registrationId,EventAttendanceMark(source=EventAttendanceMarkSourceEnum.entries.first{it.value=="qr"}))}){row->
@@ -401,4 +403,11 @@ class StaffStateHolder(
         if(error?.status==403){clear();onForbidden();return}
         val deadline=if(error?.status==429)retryDeadlineMillis(now(),error.retryAfterSeconds?:60) else state.value.retryAtMillis
         mutable.update{it.copy(error=error?.let{text.apiFailure(it)}?:(if(f is MobileCopyException)text.failure(f)else text(StaffStrings.STAFF_COULDN_T_CONNECT_REFRESH_AND_TRY_AGAIN)),retryAtMillis=maxOf(it.retryAtMillis,deadline))}}
+}
+
+/** A ticket QR carries the registration's check-in UUID; anything else is a card/badge credential (backend limit 80 chars). */
+internal fun checkInBody(raw:String):EventCheckInResolveRequest?{
+    val value=raw.trim()
+    val token=runCatching{java.util.UUID.fromString(value)}.getOrNull()?.takeIf{it.toString().equals(value,ignoreCase=true)}
+    return when{token!=null->EventCheckInResolveRequest(checkinToken=token);value.isEmpty()||value.length>80->null;else->EventCheckInResolveRequest(credential=value)}
 }

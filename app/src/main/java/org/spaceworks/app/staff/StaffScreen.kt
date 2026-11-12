@@ -182,9 +182,12 @@ private data class StaffConfirmation(val title:String,val detail:String,val acti
                     if("bookings" !in s.loading&&s.bookings.isEmpty())Text(text(StaffStrings.STAFF_NO_BOOKINGS_FOR_THIS_SPACE))
                     s.bookings.forEach{row->StaffCard{Text(row.name,style=MaterialTheme.typography.titleLarge);Text("${row.startsAt} – ${row.endsAt}");Text(text(StaffStrings.STAFF_STATUS_1_S, row.status.value.replace('_',' ')))
                         row.payment?.let{Text(text(StaffStrings.STAFF_PAYMENT_1_S, it.status))}
+                        // 0.12.0: rejecting a booking requires a reason (at most 1000 characters).
+                        var reason by remember(row.id){mutableStateOf("")}
+                        if(row.status.value=="pending"&&holder.can("manage_bookings"))BrandField(reason,{reason=it.take(1000)},text(StaffStrings.STAFF_REASON_FOR_REJECTION),Modifier.testTag("staff-booking-reason-${row.id}"),enabled=enabled)
                         if(row.status.value=="pending"&&holder.can("manage_bookings"))FlowRow(horizontalArrangement=Arrangement.spacedBy(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                             BrandButton(text(StaffStrings.STAFF_APPROVE),{confirmation=StaffConfirmation(text(StaffStrings.STAFF_APPROVE_BOOKING),text(StaffStrings.STAFF_APPROVE_1_S_S_BOOKING_FOR_2_S, row.name, s.selectedSpace?.name.orEmpty())){holder.decideBooking(row.id,true)}},enabled,Modifier.testTag("staff-booking-approve-${row.id}"))
-                            BrandTextButton(text(StaffStrings.STAFF_REJECT),{confirmation=StaffConfirmation(text(StaffStrings.STAFF_REJECT_BOOKING),text(StaffStrings.STAFF_REJECT_1_S_S_BOOKING, row.name)){holder.decideBooking(row.id,false)}},enabled)}}}
+                            BrandTextButton(text(StaffStrings.STAFF_REJECT),{val value=reason;confirmation=StaffConfirmation(text(StaffStrings.STAFF_REJECT_BOOKING),text(StaffStrings.STAFF_REJECT_1_S_S_BOOKING, row.name)){holder.decideBooking(row.id,false,value)}},enabled&&reason.isNotBlank(),Modifier.testTag("staff-booking-reject-${row.id}"))}}}
                     BrandTextButton(text(StaffStrings.STAFF_REFRESH_BOOKINGS),{launch{holder.loadBookings()}},enabled);MoreStaff(s,"bookings",enabled){launch{holder.loadBookings(true)}}
                 }
             }

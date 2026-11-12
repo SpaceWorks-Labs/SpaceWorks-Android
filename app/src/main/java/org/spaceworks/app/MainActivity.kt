@@ -169,6 +169,8 @@ class MainActivity:ComponentActivity() {
     }
 
     val links=bundle.links?.state?.collectAsStateWithLifecycle()?.value
+    val staffGrant=bundle.staffGrant?.state?.collectAsStateWithLifecycle()?.value
+    LaunchedEffect(bundle,state.user?.id) {if(state.user!=null)bundle.staffGrant?.restore()}
     val staffState=bundle.staff?.state?.collectAsStateWithLifecycle()?.value
     val staffForm=staffState?.let {it.busy || it.section in setOf(org.spaceworks.app.staff.StaffSection.REQUEST,org.spaceworks.app.staff.StaffSection.HANDOVER,org.spaceworks.app.staff.StaffSection.CHECK_IN,org.spaceworks.app.staff.StaffSection.BOOKINGS)}==true
     var pushError by remember(bundle){mutableStateOf<String?>(null)}
@@ -238,9 +240,16 @@ class MainActivity:ComponentActivity() {
             }
         },onDeleted={closeAccount();management?.owner?.resetAccount();onDemoDeleted()})
         bundle.demo && preview?.page!=null -> PreviewAuthScreen(requireNotNull(bundle.previewAuth))
+        state.gate==AuthGate.UPDATE_REQUIRED -> AuthScreen(bundle,onChangeServer?.let {{scope.launch {bundle.holder.signOut();it()}}})
         account?.route!=null -> AccountFlowScreen(requireNotNull(bundle.accounts),bundle.demo)
         state.user==null -> AuthScreen(bundle,onChangeServer?.let {{scope.launch {bundle.holder.signOut();it()}}})
         state.user?.mustChangePassword==true -> ChangePasswordScreen(bundle)
+        state.handleRequired && bundle.handles!=null -> HandleScreen(bundle,requireNotNull(bundle.handles))
+        (staffGrant?.pending!=null || staffGrant?.recoveryCodes?.isNotEmpty()==true) && bundle.staffGrant!=null ->
+            org.spaceworks.app.staff.StaffStepUpScreen(requireNotNull(bundle.staffGrant),makerspaceLabel(staffGrant?.pending?.slug ?: state.selected?.slug.orEmpty())) {
+                val id=bundle.holder.state.value.selectedId
+                if(id!=null && bundle.staffAvailable())pendingStaffMaker=id
+            }
         accountPanel!=null && management?.owner?.current()===accountPanel -> AccountScreens(requireNotNull(accountPanel),bundle.demo,::closeAccount,
             privacyURL=BrandLinks.privacyURL,supportURL=BrandLinks.supportURL,
             onDelete={deletion=bundle.deletionPreview(bundle.holder.state.value.memberships.map {it.id})})

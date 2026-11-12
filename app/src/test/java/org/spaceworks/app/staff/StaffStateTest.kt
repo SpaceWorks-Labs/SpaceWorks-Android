@@ -63,7 +63,7 @@ class StaffStateTest {
         override suspend fun spaces(scope:MemberScope,page:Int):BookableSpaceListResponse=decode(buildJsonObject{put("count",1);put("results",JsonArray(listOf(fixture("space"))))})
         override suspend fun bookings(scope:MemberScope,spaceId:Int,page:Int):BookingListResponse{bookingsReads++;return decode(buildJsonObject{put("count",1);put("results",JsonArray(listOf(fixture("booking"))))})}
         override suspend fun approveBooking(scope:MemberScope,id:Int):BookingAdmin{bookingFailure?.let{throw it};return decode(fixture("booking"))}
-        override suspend fun rejectBooking(scope:MemberScope,id:Int):BookingAdmin{bookingFailure?.let{throw it};return decode(fixture("booking"))}
+        override suspend fun rejectBooking(scope:MemberScope,id:Int,reason:String):BookingAdmin{bookingFailure?.let{throw it};return decode(fixture("booking"))}
     }
     private fun holder(fake:Fake,authority:StaffAuthorizer=StaffAuthorizer{_,_->true},upload:StaffPhotoUpload=StaffPhotoUpload{_,_->},now:()->Long={1000L})=
         StaffStateHolder(fake,authority,upload,now=now).also{it.activate(scope)}
