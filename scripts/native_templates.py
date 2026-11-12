@@ -35,6 +35,12 @@ CORRECT_PARENT_SUFFIX = (
 )
 API_ANNOTATION_ANCHOR = '    @{{httpMethod}}("{{{path}}}")\n'
 API_STREAMING_ANNOTATION = "    {{#isResponseFile}}\n    @Streaming\n    {{/isResponseFile}}\n"
+# Retrofit refuses @DELETE with @Body; 0.12.0 compare-and-set DELETEs carry one. Every operation with a
+# body parameter uses the equivalent @HTTP(hasBody = true); all others keep the generator's annotation.
+API_BODY_AWARE_ANNOTATION = (
+    '    {{#hasBodyParam}}@HTTP(method = "{{httpMethod}}", path = "{{{path}}}", hasBody = true){{/hasBodyParam}}'
+    '{{^hasBodyParam}}@{{httpMethod}}("{{{path}}}"){{/hasBodyParam}}\n'
+)
 API_INTERFACE_ANCHOR = (
     "{{#nonPublicApi}}internal {{/nonPublicApi}}{{^nonPublicApi}}{{#explicitApi}}public {{/explicitApi}}{{/nonPublicApi}}interface {{classname}} {\n"
 )
@@ -74,7 +80,7 @@ def patched_templates(jar: Path) -> dict[str, str]:
     return {
         "data_class.mustache": replace_once(originals[MODEL_RESOURCE], ORIGINAL_PARENT_SUFFIX, CORRECT_PARENT_SUFFIX, "parent constructor"),
         "libraries/jvm-retrofit2/api.mustache": replace_once(api, API_ANNOTATION_ANCHOR,
-            API_STREAMING_ANNOTATION + API_ANNOTATION_ANCHOR, "Retrofit operation annotation"),
+            API_STREAMING_ANNOTATION + API_BODY_AWARE_ANNOTATION, "Retrofit operation annotation"),
     }
 
 

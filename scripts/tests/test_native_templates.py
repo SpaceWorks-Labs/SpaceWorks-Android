@@ -62,7 +62,8 @@ class NativeTemplateTest(unittest.TestCase):
         self.assertEqual(self.originals[templates.MODEL_RESOURCE].decode(),
             patched["data_class.mustache"].replace(templates.CORRECT_PARENT_SUFFIX, templates.ORIGINAL_PARENT_SUFFIX))
         self.assertEqual(self.originals[templates.API_RESOURCE].decode(),
-            patched["libraries/jvm-retrofit2/api.mustache"].replace(templates.API_STREAMING_ANNOTATION, "").replace(templates.API_WILDCARD_ANNOTATION, ""))
+            patched["libraries/jvm-retrofit2/api.mustache"].replace(templates.API_STREAMING_ANNOTATION, "").replace(templates.API_WILDCARD_ANNOTATION, "")
+                .replace(templates.API_BODY_AWARE_ANNOTATION, templates.API_ANNOTATION_ANCHOR))
         self.assertIn("import retrofit2.http.*", patched["libraries/jvm-retrofit2/api.mustache"])
 
     def test_constructor_invoked_once_iff_any_original_condition_is_true(self):
@@ -75,6 +76,11 @@ class NativeTemplateTest(unittest.TestCase):
     def test_streaming_is_per_binary_operation_only(self):
         self.assertIn("@Streaming", sections(templates.API_STREAMING_ANNOTATION, {"isResponseFile": True}))
         self.assertNotIn("@Streaming", sections(templates.API_STREAMING_ANNOTATION, {"isResponseFile": False}))
+
+    def test_body_operations_use_http_with_body_and_others_keep_their_method(self):
+        with_body = sections(templates.API_BODY_AWARE_ANNOTATION, {"hasBodyParam": True})
+        self.assertEqual('    @HTTP(method = "{{httpMethod}}", path = "{{{path}}}", hasBody = true)\n', with_body)
+        self.assertEqual(templates.API_ANNOTATION_ANCHOR, sections(templates.API_BODY_AWARE_ANNOTATION, {"hasBodyParam": False}))
 
     def test_retrofit_interface_suppresses_nested_jvm_wildcards_once(self):
         api = templates.patched_templates(GENERATOR_JAR)["libraries/jvm-retrofit2/api.mustache"]

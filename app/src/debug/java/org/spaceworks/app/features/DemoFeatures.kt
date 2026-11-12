@@ -81,6 +81,20 @@ class DemoInboxSnoozeGateway:InboxSnoozeGateway {
     override suspend fun snooze(scope:MemberScope,id:Int,until:java.time.OffsetDateTime):String? {delay(150);return until.toString()}
 }
 
+/** Debug-only loan contexts: kept in memory, each write bumps the revision like the server. */
+class DemoLoanContextGateway:LoanContextGateway {
+    private val rows=mutableMapOf<Pair<LoanRef,ContextKind>,LoanContext>()
+    override suspend fun read(scope:MemberScope,loan:LoanRef,kind:ContextKind):LoanContext {
+        delay(80);return rows.getOrPut(loan to kind) {LoanContext(kind,false,java.util.UUID(0,1),0,true,null,null)}
+    }
+    override suspend fun link(scope:MemberScope,loan:LoanRef,current:LoanContext,targetId:Int,participantRegistrationId:Int?):LoanContext {
+        delay(150);return current.copy(active=true,revision=current.revision+1,targetId=targetId).also {rows[loan to current.kind]=it}
+    }
+    override suspend fun unlink(scope:MemberScope,loan:LoanRef,current:LoanContext):LoanContext {
+        delay(150);return current.copy(active=false,revision=current.revision+1,targetId=null).also {rows[loan to current.kind]=it}
+    }
+}
+
 /** Debug-only staff booking: the first confirm answers a moved price once, like a real 409 price_changed. */
 class DemoStaffBookingGateway:StaffBookingGateway {
     private var moved=false
@@ -97,4 +111,4 @@ class DemoStaffBookingGateway:StaffBookingGateway {
     }
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text),InboxSnoozeStateHolder(DemoInboxSnoozeGateway(),text),StaffBookingStateHolder(DemoStaffBookingGateway(),text))
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),StaffReportsStateHolder(DemoStaffReportsGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text),InboxSnoozeStateHolder(DemoInboxSnoozeGateway(),text),LoanContextStateHolder(DemoLoanContextGateway(),text),StaffBookingStateHolder(DemoStaffBookingGateway(),text))
