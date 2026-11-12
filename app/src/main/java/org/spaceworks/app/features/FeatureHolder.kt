@@ -22,6 +22,7 @@ internal fun retrofit2.Response<*>.requireSuccess() {
 fun MobileText.featureFailure(error:Exception):String = when(error) {
     is MobileCopyException->failure(error)
     is ApiFailure->apiFailure(error)
+    is org.spaceworks.app.auth.AuthMessage->error.message?:invoke(CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)
     else->invoke(CoreStrings.CORE_COULDN_T_CONNECT_TRY_AGAIN)
 }
 

@@ -3,8 +3,8 @@ package org.spaceworks.app.features
 import org.spaceworks.app.member.MemberScope
 
 /** The member P1 feature holders of one signed-in session; they share its scope and lifetime. */
-class MemberFeatures(val history:BorrowingHistoryStateHolder,val waiver:WaiverStateHolder,val contextual:ContextualRequestStateHolder,val feeds:CalendarFeedsStateHolder) {
-    private val holders get()=listOf<FeatureHolder<*>>(history,waiver,contextual,feeds)
+class MemberFeatures(val history:BorrowingHistoryStateHolder,val waiver:WaiverStateHolder,val contextual:ContextualRequestStateHolder,val feeds:CalendarFeedsStateHolder,val link:ProviderLinkStateHolder) {
+    private val holders get()=listOf<FeatureHolder<*>>(history,waiver,contextual,feeds,link)
     fun activate(scope:MemberScope)=holders.forEach {it.activate(scope)}
     fun clear()=holders.forEach {it.clear()}
 }
@@ -14,4 +14,5 @@ fun createMemberFeatures(session:org.spaceworks.app.network.ApiSession,text:org.
     MemberFeatures(BorrowingHistoryStateHolder(GeneratedBorrowingHistoryGateway(session),text,onUnauthorized),
         WaiverStateHolder(GeneratedWaiverGateway(session),text,onUnauthorized),
         ContextualRequestStateHolder(GeneratedContextualRequestGateway(session),text,onUnauthorized),
-        CalendarFeedsStateHolder(GeneratedCalendarFeedGateway(session),text,onUnauthorized))
+        CalendarFeedsStateHolder(GeneratedCalendarFeedGateway(session),text,onUnauthorized),
+        ProviderLinkStateHolder(GeneratedProviderLinkGateway(session),text,onUnauthorized))

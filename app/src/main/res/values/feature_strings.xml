@@ -88,4 +88,16 @@
     <string name="feeds_add_to_calendar">"Add to calendar"</string>
     <string name="feeds_no_calendar_app">"No calendar app could open the feed. Make a new link from a device with a calendar app."</string>
     <string name="feeds_done">"Done"</string>
+    <string name="link_title">"Link Google sign-in"</string>
+    <string name="link_help">"Add Google as another way to sign in to this account. Confirm it's you first."</string>
+    <string name="link_password">"Password"</string>
+    <string name="link_code">"Authenticator code"</string>
+    <string name="link_confirm">"Confirm it's you"</string>
+    <string name="link_need_password">"Enter your password (and authenticator code, if you use one)."</string>
+    <string name="link_reauth_failed">"That didn't match. Check your password or code."</string>
+    <string name="link_reauth_expired">"Your confirmation expired. Confirm it's you again, then link."</string>
+    <string name="link_no_password">"This account has no password, so it can't be confirmed here. Link providers from the member area on the web."</string>
+    <string name="link_continue_google">"Continue with Google"</string>
+    <string name="link_linked">"Google is linked. You can now sign in with it."</string>
+    <string name="link_unavailable">"Google sign-in isn't available on this device."</string>
 </resources>

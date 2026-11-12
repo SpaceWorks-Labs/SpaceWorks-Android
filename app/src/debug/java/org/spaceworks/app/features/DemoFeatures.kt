@@ -56,4 +56,13 @@ class DemoCalendarFeedGateway:CalendarFeedGateway {
     override suspend fun revoke(scope:MemberScope,kind:FeedKind){delay(150);enabled[kind]=false}
 }
 
-fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text))
+/** Debug-only linking: the sample password is "demo"; no provider or server is contacted. */
+class DemoProviderLinkGateway:ProviderLinkGateway {
+    private var verified=false
+    override suspend fun status():ReauthStatus {delay(80);return ReauthStatus(verified,true,false)}
+    override suspend fun reauthenticate(password:String,code:String):Boolean {delay(150);verified=password=="demo";return verified}
+    override suspend fun nonce(provider:String)="demo-nonce"
+    override suspend fun link(provider:String,idToken:String,nonce:String):String {delay(150);return provider}
+}
+
+fun demoMemberFeatures(text:MobileText)=MemberFeatures(BorrowingHistoryStateHolder(DemoBorrowingHistoryGateway(),text),WaiverStateHolder(DemoWaiverGateway(),text),ContextualRequestStateHolder(DemoContextualRequestGateway(),text),CalendarFeedsStateHolder(DemoCalendarFeedGateway(),text),ProviderLinkStateHolder(DemoProviderLinkGateway(),text))

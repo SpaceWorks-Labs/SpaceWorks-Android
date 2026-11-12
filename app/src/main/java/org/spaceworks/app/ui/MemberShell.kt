@@ -199,7 +199,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 org.spaceworks.app.theme.BrandLinks.privacyURL?.takeIf {org.spaceworks.app.account.AccountLinkPolicy.safe(it)}?.let {url->
                                     BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_privacy),{runCatching {context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)))}})}
                             })
-                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),member,{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
+                        featureRoute!=null && features!=null -> org.spaceworks.app.features.FeatureRouteScreen(features,requireNotNull(featureRoute),member,state.googleClientId,{scope.launch {member?.refreshOverview()}}) {featureRoute=null}
                         showingStaff && staffAvailable && staff!=null && (staffState?.scope==null || staffState.scope?.id==state.selectedId) -> org.spaceworks.app.staff.StaffScreen(staff,bundle.demo,{staff.close();showingStaff=false},previewScope=state.selected?.let {MemberScope(it.id,it.slug)},
                             dashboard=insights?.let {holder->{org.spaceworks.app.insights.StaffDashboardPanel(holder)}})
                         showingMessaging && insights!=null -> org.spaceworks.app.insights.MessagingConsentScreen(insights,{showingMessaging=false},onAccount)
@@ -230,6 +230,7 @@ private val destinationIcons=listOf(Icons.Outlined.Home,Icons.Outlined.Build,Ico
                                 if(grant!=null && staffAvailable)BrandTextButton(copyText(org.spaceworks.app.staff.StaffStrings.STAFF_SIGN_OUT_OF_STAFF_TOOLS),{scope.launch {showingStaff=false;staff?.clear();grant.signOut()}},!state.busy,modifier=Modifier.semantics {testTag="staff-sign-out"})
                                 onAccount?.let {BrandTextButton(androidx.compose.ui.res.stringResource(org.spaceworks.app.R.string.account_title),it,!state.busy,modifier=Modifier.semantics {testTag="account-entry"})}
                                 if(payments!=null)BrandTextButton(copyText(PaymentStrings.PAYMENT_PAYMENTS),{showingPayments=true},!state.busy,modifier=Modifier.semantics {testTag="payments-entry"})
+                                if(features!=null && state.googleClientId!=null)BrandTextButton(copyText(org.spaceworks.app.features.FeatureStrings.LINK_TITLE),{featureRoute=org.spaceworks.app.features.FeatureRoute.LINK_PROVIDER},!state.busy,modifier=Modifier.semantics {testTag="link-provider-entry"})
                                 if(features!=null)BrandTextButton(copyText(org.spaceworks.app.features.FeatureStrings.WAIVER_TITLE),{featureRoute=org.spaceworks.app.features.FeatureRoute.WAIVER},!state.busy,modifier=Modifier.semantics {testTag="waiver-entry"})
                                 state.memberships.filter {it.id!=state.selectedId}.forEach {membership ->
                                     BrandTextButton(copyText(UiStrings.MOBILE_SWITCH_TO_VALUE,makerspaceLabel(membership.slug)),{bundle.links?.clear();bundle.holder.select(membership.id)},!state.busy)
